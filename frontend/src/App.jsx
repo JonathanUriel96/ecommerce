@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import RoleDashboard from "./RoleDashboard.jsx";
+import { apiFetch } from "./api";
 
 const formatoPrecio = new Intl.NumberFormat("es-MX", {
   style: "currency",
@@ -161,7 +162,7 @@ function App({ initialAuthError = "" }) {
     setIsSubmittingOrder(true);
 
     try {
-      const response = await fetch("/api/orders", {
+      const response = await apiFetch("/api/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -228,7 +229,7 @@ function App({ initialAuthError = "" }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/auth/providers")
+    apiFetch("/api/auth/providers")
       .then((response) => response.ok ? response.json() : null)
       .then((providers) => {
         if (!cancelled && providers) {
@@ -243,7 +244,7 @@ function App({ initialAuthError = "" }) {
   useEffect(() => {
     async function loadProducts() {
       try {
-        const response = await fetch("/api/products");
+        const response = await apiFetch("/api/products");
 
         if (!response.ok) {
           throw new Error(`El servidor respondió con HTTP ${response.status}`);
@@ -277,7 +278,7 @@ function App({ initialAuthError = "" }) {
     }
 
     let cancelled = false;
-    fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
+    apiFetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
       .then(async (response) => {
         if (!response.ok) {
           throw new Error("La sesión venció. Inicia sesión de nuevo.");
@@ -304,7 +305,7 @@ function App({ initialAuthError = "" }) {
     const registering = authMode === "register";
 
     try {
-      const response = await fetch(registering ? "/api/auth/register" : "/api/auth/login", {
+      const response = await apiFetch(registering ? "/api/auth/register" : "/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(registering
@@ -331,7 +332,7 @@ function App({ initialAuthError = "" }) {
   const handleLogout = async () => {
     try {
       if (token) {
-        await fetch("/api/auth/logout", {
+        await apiFetch("/api/auth/logout", {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
         });
