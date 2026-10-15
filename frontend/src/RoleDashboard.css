@@ -1,0 +1,294 @@
+.role-dashboard {
+  display: grid;
+  gap: 22px;
+  width: 100%;
+  margin: 0;
+}
+
+.dashboard-heading,
+.dashboard-orders,
+.staff-account-panel {
+  padding: 24px;
+  background: #fff;
+  border: 1px solid #e7e8e3;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgb(37 58 50 / 5%);
+}
+
+.staff-account-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.staff-account-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.staff-account-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.staff-account-toggle > span:first-child {
+  display: grid;
+  gap: 7px;
+}
+
+.staff-account-toggle strong {
+  color: #202922;
+  font-size: 18px;
+}
+
+.staff-account-toggle small {
+  color: #69736b;
+  font-size: 14px;
+}
+
+.staff-account-toggle-icon {
+  flex: 0 0 auto;
+  color: #69736b;
+  font-size: 24px;
+  transition: transform 160ms ease;
+}
+
+.staff-account-panel[open] .staff-account-toggle-icon {
+  transform: rotate(180deg);
+}
+
+.staff-account-toggle:focus-visible {
+  outline: 3px solid #78c9aa;
+  outline-offset: -4px;
+}
+
+.staff-account-content {
+  padding: 0 24px 24px;
+}
+
+.dashboard-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dashboard-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.orders-close-button {
+  width: 40px;
+  height: 40px;
+  color: #69736b;
+  background: #fff;
+  border: 1px solid #d9ddd7;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 25px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.orders-close-button:hover {
+  color: #202922;
+  background: #f4f5f1;
+}
+
+.dashboard-heading h2,
+.dashboard-orders h3,
+.staff-account-panel h3 {
+  margin: 0;
+  color: #202922;
+}
+
+.dashboard-heading h2 {
+  font-size: 28px;
+}
+
+.dashboard-orders h3,
+.staff-account-panel h3 {
+  font-size: 20px;
+}
+
+.orders-description,
+.order-customer {
+  color: #69736b;
+}
+
+.staff-account-form {
+  margin-top: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.staff-account-form label {
+  display: grid;
+  gap: 7px;
+  color: #4d5b51;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.staff-account-form input,
+.staff-account-form select,
+.order-status-control select {
+  min-width: 0;
+  padding: 10px 11px;
+  color: #202922;
+  background: #fff;
+  border: 1px solid #d9ddd7;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.staff-account-form .checkout-button {
+  align-self: end;
+}
+
+.dashboard-success {
+  padding: 12px;
+  color: #245b38;
+  background: #e8f5ea;
+  border-radius: 8px;
+}
+
+.dashboard-orders h3 {
+  margin-bottom: 16px;
+}
+
+.orders-list {
+  display: grid;
+  gap: 16px;
+}
+
+.order-card {
+  min-width: 0;
+  padding: 18px 20px;
+  background: #fbfcfa;
+  border: 1px solid #e3e8e1;
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgb(37 58 50 / 4%);
+}
+
+.order-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e7eae5;
+}
+
+.order-card h4 {
+  margin: 0;
+  color: #202922;
+  font-size: 17px;
+}
+
+.order-customer {
+  margin: 14px 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.order-date {
+  margin: 0;
+  color: #778078;
+  font-size: 13px;
+}
+
+.order-status-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #69736b;
+  font-size: 13px;
+}
+
+.order-status-control select {
+  padding: 6px 8px;
+}
+
+.order-items {
+  display: grid;
+  gap: 0;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid #e7eae5;
+}
+
+.order-items li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  color: #4d5b51;
+  font-size: 14px;
+  border-bottom: 1px solid #edf0eb;
+}
+
+.order-items li span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.order-items li span:last-child {
+  flex: 0 0 auto;
+  color: #202922;
+  font-weight: 600;
+}
+
+.order-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 14px;
+  color: #69736b;
+  font-size: 14px;
+}
+
+.order-total strong {
+  color: #202922;
+  font-size: 17px;
+}
+
+@media (max-width: 650px) {
+  .dashboard-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dashboard-heading-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .staff-account-form {
+    grid-template-columns: 1fr;
+  }
+
+  .order-card {
+    padding: 15px;
+  }
+
+  .order-card-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .order-items li {
+    align-items: flex-start;
+    gap: 10px;
+  }
+}

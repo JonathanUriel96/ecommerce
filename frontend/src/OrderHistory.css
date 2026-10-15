@@ -1,0 +1,141 @@
+.orders-admin {
+  padding: 28px;
+  background: #fff;
+  border: 1px solid #e7e8e3;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgb(37 58 50 / 5%);
+}
+
+.orders-admin h2 {
+  margin: 0;
+  color: #202922;
+  font-size: 28px;
+}
+
+.orders-description,
+.order-date {
+  color: #69736b;
+}
+
+.orders-auth-form {
+  margin: 22px 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: 14px;
+}
+
+.orders-auth-form label {
+  display: grid;
+  gap: 7px;
+  color: #4d5b51;
+  font-size: 14px;
+}
+
+.orders-auth-form input {
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid #cfd5ce;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.orders-auth-form button {
+  padding: 12px 16px;
+  color: #fff;
+  background: #253a32;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.orders-auth-form button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.orders-error,
+.orders-empty {
+  padding: 14px;
+  color: #4d5b51;
+  background: #f4f5f1;
+  border-radius: 8px;
+}
+
+.orders-error {
+  color: #8c3027;
+  background: #fff0ed;
+}
+
+.orders-list {
+  display: grid;
+  gap: 14px;
+}
+
+.order-card {
+  padding: 18px;
+  border: 1px solid #e7e8e3;
+  border-radius: 12px;
+}
+
+.order-card-header,
+.order-items li,
+.order-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.order-card-header h3 {
+  margin: 0;
+  color: #202922;
+}
+
+.order-date {
+  font-size: 13px;
+}
+
+.order-status {
+  padding: 5px 9px;
+  color: #745616;
+  background: #fff3d3;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.order-status.paid {
+  color: #27623a;
+  background: #e6f4e9;
+}
+
+.order-status.cancelled {
+  color: #8c3027;
+  background: #fff0ed;
+}
+
+.order-items {
+  padding: 12px 0;
+  display: grid;
+  gap: 9px;
+  border-top: 1px solid #e7e8e3;
+  border-bottom: 1px solid #e7e8e3;
+  list-style: none;
+}
+
+.order-total strong {
+  color: #253a32;
+}
+
+@media (max-width: 700px) {
+  .orders-admin {
+    padding: 20px;
+  }
+
+  .orders-auth-form {
+    grid-template-columns: 1fr;
+  }
+}

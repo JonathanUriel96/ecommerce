@@ -1,0 +1,2 @@
+ALTER TABLE products
+    ADD COLUMN model VARCHAR(120) NULL;
