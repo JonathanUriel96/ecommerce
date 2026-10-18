@@ -47,7 +47,8 @@ El inicio de sesión devuelve un token Bearer que el frontend mantiene en la ses
 - `GET /api/auth/me` y `POST /api/auth/logout`: consultar o cerrar la sesión autenticada.
 - `POST /api/auth/users`: crear empleado o administrador; requiere rol `ADMIN`.
 - `GET /api/products?page=0&size=20` y `GET /api/products/{id}`: catálogo público. El tamaño máximo de página es 100.
-- `POST /api/products`, `PUT /api/products/{id}` y `DELETE /api/products/{id}`: gestión de productos; requieren rol `ADMIN`. `DELETE` desactiva el producto.
+- `POST /api/products`: agregar productos; requiere rol `EMPLOYEE` o `ADMIN`. `PUT /api/products/{id}` y `DELETE /api/products/{id}` requieren rol `ADMIN`. `DELETE` desactiva el producto.
+- Al crear o actualizar productos, `category` acepta `MOUSE`, `KEYBOARD`, `HEADPHONES`, `MONITOR` u `OTHER`. Los productos previos a la migración V6 se clasifican como `OTHER` hasta que se actualicen.
 - `POST /api/orders`: crear pedido; requiere rol `CUSTOMER`.
 - `GET /api/orders/mine`: ver los pedidos propios; requiere rol `CUSTOMER`.
 - `GET /api/orders` y `PATCH /api/orders/{id}/status`: consultar y actualizar pedidos; requieren rol `EMPLOYEE` o `ADMIN`.

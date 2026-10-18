@@ -17,6 +17,8 @@ public record ProductRequest(
         @Size(max = 120)
         String model,
 
+        ProductCategory category,
+
         @Size(max = 5_000)
         String description,
 
@@ -29,4 +31,9 @@ public record ProductRequest(
         @Min(0)
         Integer stock
 ) {
+    public ProductRequest {
+        if (category == null) {
+            category = ProductCategory.OTHER;
+        }
+    }
 }

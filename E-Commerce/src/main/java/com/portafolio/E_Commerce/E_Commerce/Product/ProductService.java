@@ -30,6 +30,7 @@ public class ProductService {
         Product product = new Product(
                 request.name(),
                 request.model(),
+                request.category(),
                 request.description(),
                 request.price(),
                 request.stock()
@@ -43,6 +44,7 @@ public class ProductService {
                 .map(product -> {
                     product.setName(request.name());
                     product.setModel(request.model());
+                    product.setCategory(request.category());
                     product.setDescription(request.description());
                     product.setPrice(request.price());
                     product.setStock(request.stock());

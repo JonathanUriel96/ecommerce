@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import "./RoleDashboard.css";
 import { apiFetch } from "./api";
+import { PRODUCT_CATEGORIES } from "./productCategories";
 
 const money = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
 const statusLabels = { PENDING: "Pendiente", PAID: "Pagado", CANCELLED: "Cancelado" };
 const roleLabels = { CUSTOMER: "Cliente", EMPLOYEE: "Empleado", ADMIN: "Administrador" };
-const emptyProductForm = { name: "", model: "", description: "", price: "", stock: "0" };
+const emptyProductForm = { name: "", model: "", category: "", description: "", price: "", stock: "0" };
 
 export default function RoleDashboard({ user, token, onClose, onProductCreated }) {
   const [orders, setOrders] = useState([]);
@@ -115,6 +116,7 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
         body: JSON.stringify({
           name: productForm.name.trim(),
           model: productForm.model.trim(),
+          category: productForm.category,
           description: productForm.description.trim(),
           price: Number(productForm.price),
           stock: Number(productForm.stock),
@@ -170,6 +172,14 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
               </label>
               <label>Modelo
                 <input value={productForm.model} onChange={(event) => setProductForm({ ...productForm, model: event.target.value })} maxLength={120} />
+              </label>
+              <label>Categoría
+                <select value={productForm.category} onChange={(event) => setProductForm({ ...productForm, category: event.target.value })} required>
+                  <option value="" disabled>Selecciona una categoría</option>
+                  {PRODUCT_CATEGORIES.map((category) => (
+                    <option key={category.value} value={category.value}>{category.label}</option>
+                  ))}
+                </select>
               </label>
               <label className="product-description-field">Descripción
                 <textarea value={productForm.description} onChange={(event) => setProductForm({ ...productForm, description: event.target.value })} maxLength={5000} rows={3} />

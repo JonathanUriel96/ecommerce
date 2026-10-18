@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "./App.css";
 import RoleDashboard from "./RoleDashboard.jsx";
 import { apiFetch } from "./api";
+import { PRODUCT_CATEGORIES, PRODUCT_CATEGORY_LABELS } from "./productCategories";
 
 const formatoPrecio = new Intl.NumberFormat("es-MX", {
   style: "currency",
@@ -22,6 +23,7 @@ function App({ initialAuthError = "" }) {
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOrder, setSortOrder] = useState("featured");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const [isHeroPaused, setIsHeroPaused] = useState(false);
   const [token, setToken] = useState(() => window.sessionStorage.getItem(AUTH_STORAGE_KEY) ?? "");
@@ -55,8 +57,10 @@ function App({ initialAuthError = "" }) {
   );
   const filteredProducts = products
     .filter((product) => {
-      const searchableText = `${product.name ?? ""} ${product.model ?? ""} ${product.description ?? ""}`;
-      return searchableText
+      const matchesCategory = categoryFilter === "ALL" || (product.category ?? "OTHER") === categoryFilter;
+      const categoryLabel = PRODUCT_CATEGORY_LABELS[product.category] ?? PRODUCT_CATEGORY_LABELS.OTHER;
+      const searchableText = `${product.name ?? ""} ${product.model ?? ""} ${product.description ?? ""} ${categoryLabel}`;
+      return matchesCategory && searchableText
         .toLocaleLowerCase("es-MX")
         .includes(searchTerm.trim().toLocaleLowerCase("es-MX"));
     })
@@ -78,7 +82,7 @@ function App({ initialAuthError = "" }) {
 
       return 0;
     });
-  const heroProducts = products.slice(0, 5);
+  const heroProducts = products.slice(-5);
   const heroSlideIndex = heroProducts.length
     ? activeHeroIndex % heroProducts.length
     : 0;
@@ -735,6 +739,16 @@ function App({ initialAuthError = "" }) {
                   <option value="name">Nombre A-Z</option>
                 </select>
               </label>
+
+              <label>
+                Filtrar por categoría
+                <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+                  <option value="ALL">Todas las categorías</option>
+                  {PRODUCT_CATEGORIES.map((category) => (
+                    <option key={category.value} value={category.value}>{category.label}</option>
+                  ))}
+                </select>
+              </label>
             </div>
           )}
 
@@ -763,11 +777,11 @@ function App({ initialAuthError = "" }) {
             products.length > 0 &&
             filteredProducts.length === 0 && (
               <div className="message">
-                <p>No encontramos productos con esa búsqueda.</p>
+                <p>No encontramos productos con esos filtros.</p>
                 <button
                   className="clear-search-button"
                   type="button"
-                  onClick={() => setSearchTerm("")}
+                  onClick={() => { setSearchTerm(""); setCategoryFilter("ALL"); }}
                 >
                   Limpiar búsqueda
                 </button>
@@ -777,7 +791,7 @@ function App({ initialAuthError = "" }) {
           {!loading && !error && products.length > 0 && (
             <div className="product-grid">
               {filteredProducts.map((product) => (
-                <article className="product-card" id={`product-${product.id}`} key={product.id}>
+                <article className={`product-card product-card--${(product.category ?? "OTHER").toLowerCase()}`} id={`product-${product.id}`} key={product.id}>
                   <div className="product-art" aria-hidden="true">
                     <span className="product-initial">
                       {(product.name || "P").trim().charAt(0).toUpperCase()}
@@ -788,6 +802,9 @@ function App({ initialAuthError = "" }) {
                   </div>
 
                   <div className="product-info">
+                    <span className="product-category">
+                      {PRODUCT_CATEGORY_LABELS[product.category] ?? PRODUCT_CATEGORY_LABELS.OTHER}
+                    </span>
                     <div className="stock-label">
                       <span className="stock-dot" />
                       {Number(product.stock) > 0

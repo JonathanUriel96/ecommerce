@@ -17,6 +17,10 @@ public class Product {
     @Column(length = 120)
     private String model;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private ProductCategory category = ProductCategory.OTHER;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 
@@ -34,12 +38,17 @@ public class Product {
     }
 
     public Product(String name, String description, BigDecimal price, Integer stock) {
-        this(name, null, description, price, stock);
+        this(name, null, ProductCategory.OTHER, description, price, stock);
     }
 
     public Product(String name, String model, String description, BigDecimal price, Integer stock) {
+        this(name, model, ProductCategory.OTHER, description, price, stock);
+    }
+
+    public Product(String name, String model, ProductCategory category, String description, BigDecimal price, Integer stock) {
         this.name = name;
         this.model = model;
+        this.category = category == null ? ProductCategory.OTHER : category;
         this.description = description;
         this.price = price;
         this.stock = stock;
@@ -63,6 +72,14 @@ public class Product {
 
     public void setModel(String model) {
         this.model = model;
+    }
+
+    public ProductCategory getCategory() {
+        return category;
+    }
+
+    public void setCategory(ProductCategory category) {
+        this.category = category;
     }
 
     public String getDescription() {

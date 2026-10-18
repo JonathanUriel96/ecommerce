@@ -6,6 +6,7 @@ public record ProductResponse(
         Long id,
         String name,
         String model,
+        ProductCategory category,
         String description,
         BigDecimal price,
         Integer stock
@@ -15,6 +16,7 @@ public record ProductResponse(
                 product.getId(),
                 product.getName(),
                 product.getModel(),
+                product.getCategory(),
                 product.getDescription(),
                 product.getPrice(),
                 product.getStock()
