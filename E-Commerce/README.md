@@ -18,6 +18,8 @@ $env:ADMIN_PASSWORD = '<password-admin>'
 .\mvnw.cmd spring-boot:run
 ```
 
+Para subir fotos desde el panel local, agrega `CLOUDINARY_URL` a **Run/Debug Configuration → Environment variables** en IntelliJ. El valor tiene el formato `cloudinary://<api_key>:<api_secret>@<cloud_name>` y se obtiene en la consola de Cloudinary. No lo guardes en el repositorio.
+
 El perfil `dev` actualiza el esquema automáticamente y muestra las consultas SQL. El perfil `prod` aplica las migraciones Flyway, valida el esquema con Hibernate y no imprime SQL. Configura `SPRING_PROFILES_ACTIVE=prod` al desplegar. Al adoptar Flyway sobre una base existente, se crea una línea base; Hibernate valida que la tabla coincida con el modelo.
 
 ## Roles y acceso
@@ -47,9 +49,11 @@ El inicio de sesión devuelve un token Bearer que el frontend mantiene en la ses
 - `GET /api/auth/me` y `POST /api/auth/logout`: consultar o cerrar la sesión autenticada.
 - `POST /api/auth/users`: crear empleado o administrador; requiere rol `ADMIN`.
 - `GET /api/products?page=0&size=20` y `GET /api/products/{id}`: catálogo público. El tamaño máximo de página es 100.
-- `POST /api/products`: agregar productos; requiere rol `EMPLOYEE` o `ADMIN`. `PUT /api/products/{id}` y `DELETE /api/products/{id}` requieren rol `ADMIN`. `DELETE` desactiva el producto.
+- `POST /api/products`: agregar productos; requiere rol `EMPLOYEE` o `ADMIN`. La tienda envía `multipart/form-data` con la parte `product` (JSON) y la parte `image` (archivo). La variante JSON existente sigue aceptando `imageUrl` para integraciones.
+- `PATCH /api/products/{id}/image`: reemplazar la foto de un producto; requiere rol `EMPLOYEE` o `ADMIN` y recibe `multipart/form-data` con la parte `image`.
+- `PUT /api/products/{id}` y `DELETE /api/products/{id}` requieren rol `ADMIN`. `DELETE` desactiva el producto.
 - Al crear o actualizar productos, `category` acepta `MOUSE`, `KEYBOARD`, `HEADPHONES`, `MONITOR` u `OTHER`. Los productos previos a la migración V6 se clasifican como `OTHER` hasta que se actualicen.
-- `imageUrl` guarda la URL HTTPS pública de la foto. La migración V7 agrega `image_url`; los productos anteriores quedan sin URL hasta que se les asigne una.
+- Las fotos se guardan en Cloudinary y la respuesta del producto conserva la URL HTTPS en `imageUrl`. La migración V7 agrega `image_url`.
 - `POST /api/orders`: crear pedido; requiere rol `CUSTOMER`.
 - `GET /api/orders/mine`: ver los pedidos propios; requiere rol `CUSTOMER`.
 - `GET /api/orders` y `PATCH /api/orders/{id}/status`: consultar y actualizar pedidos; requieren rol `EMPLOYEE` o `ADMIN`.
@@ -60,34 +64,11 @@ La API pagina productos y pedidos y devuelve DTOs, no entidades JPA. Configura H
 
 ### Fotos de productos
 
-Sube cada foto a un servicio de imágenes que proporcione una URL pública HTTPS directa al archivo. No uses una ruta local (`C:\\...`), una URL `localhost` ni el enlace a una página de vista previa; la dirección debe abrir la imagen directamente. El formulario del panel de empleado/administrador pide esa URL al crear el producto y el catálogo y el carrusel la muestran.
+En el panel, los empleados y administradores pueden elegir un archivo al crear un producto o cambiar la foto de uno existente. Se aceptan archivos JPG, PNG y WEBP de hasta 5 MB. El backend los carga de forma autenticada a Cloudinary y guarda en MySQL solamente la URL devuelta; el catálogo y el carrusel muestran esa foto.
 
-Ejemplo de cuerpo para `POST /api/products`:
+Para habilitar la carga, crea una cuenta y un producto de medios en Cloudinary. Copia el valor `CLOUDINARY_URL` de su consola y configúralo como variable secreta del servicio del backend en Railway. Para desarrollo local, agrega la misma variable a la configuración de ejecución de Spring Boot en IntelliJ. La API secret nunca debe estar en Vercel, en React ni en Git. Cloudinary requiere `cloud_name`, `api_key` y `api_secret` para las llamadas seguras de subida; el backend usa el SDK Java oficial.
 
-```json
-{
-  "name": "Mouse inalámbrico",
-  "model": "MOU-001",
-  "imageUrl": "https://imagenes.ejemplo.com/mouse-inalambrico.jpg",
-  "category": "MOUSE",
-  "description": "Mouse inalámbrico para oficina",
-  "price": 649.99,
-  "stock": 18
-}
-```
-
-Para asignar fotos a productos que ya existen en la base de datos, primero consulta sus identificadores y luego actualiza la URL correspondiente:
-
-```sql
-USE ecommerce_db;
-SELECT id, name, image_url FROM products;
-
-UPDATE products
-SET image_url = 'https://imagenes.ejemplo.com/mouse-inalambrico.jpg'
-WHERE id = 1;
-```
-
-Repite el `UPDATE` con el ID y URL de cada producto. Ejecuta la migración V7 antes de actualizar una base de datos existente; Flyway la aplica al desplegar el backend.
+Los productos que ya estaban en el catálogo pueden recibir su foto desde **Actualizar imágenes del catálogo** en el mismo panel, sin ejecutar SQL ni abrir Workbench.
 
 ## Pruebas
 

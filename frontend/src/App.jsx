@@ -886,7 +886,11 @@ function App({ initialAuthError = "" }) {
               user={currentUser}
               token={token}
               onClose={() => setShowOrderHistory(false)}
-              onProductCreated={(product) => setProducts((currentProducts) => [...currentProducts, product])}
+              onProductCreated={(product) => setProducts((currentProducts) => (
+                currentProducts.some((currentProduct) => currentProduct.id === product.id)
+                  ? currentProducts.map((currentProduct) => currentProduct.id === product.id ? product : currentProduct)
+                  : [...currentProducts, product]
+              ))}
             />
           </section>
         </div>

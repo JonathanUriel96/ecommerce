@@ -6,7 +6,9 @@ import { PRODUCT_CATEGORIES } from "./productCategories";
 const money = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
 const statusLabels = { PENDING: "Pendiente", PAID: "Pagado", CANCELLED: "Cancelado" };
 const roleLabels = { CUSTOMER: "Cliente", EMPLOYEE: "Empleado", ADMIN: "Administrador" };
-const emptyProductForm = { name: "", model: "", imageUrl: "", category: "", description: "", price: "", stock: "0" };
+const MAX_PRODUCT_IMAGE_SIZE = 5 * 1024 * 1024;
+const PRODUCT_IMAGE_TYPES = "image/jpeg,image/png,image/webp";
+const emptyProductForm = { name: "", model: "", image: null, category: "", description: "", price: "", stock: "0" };
 
 export default function RoleDashboard({ user, token, onClose, onProductCreated }) {
   const [orders, setOrders] = useState([]);
@@ -22,6 +24,14 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
   const [productMessage, setProductMessage] = useState("");
   const [productError, setProductError] = useState("");
   const [creatingProduct, setCreatingProduct] = useState(false);
+  const [productImageInputKey, setProductImageInputKey] = useState(0);
+  const [managedProducts, setManagedProducts] = useState([]);
+  const [loadingManagedProducts, setLoadingManagedProducts] = useState(true);
+  const [managedProductsError, setManagedProductsError] = useState("");
+  const [imageFiles, setImageFiles] = useState({});
+  const [uploadingImageId, setUploadingImageId] = useState(null);
+  const [imageUploadError, setImageUploadError] = useState("");
+  const canManageProducts = user.role === "EMPLOYEE" || user.role === "ADMIN";
 
   const fetchOrders = useCallback(async () => {
     const path = user.role === "CUSTOMER"
@@ -34,6 +44,28 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
     }
     return Array.isArray(data.content) ? data.content : [];
   }, [token, user.role]);
+
+  const fetchManagedProducts = useCallback(async () => {
+    const response = await apiFetch("/api/products?page=0&size=100");
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.detail || data.message || `No se pudo cargar el catálogo (HTTP ${response.status}).`);
+    }
+    return Array.isArray(data.content) ? data.content : [];
+  }, []);
+
+  useEffect(() => {
+    if (!canManageProducts) return undefined;
+    let cancelled = false;
+    setLoadingManagedProducts(true);
+    fetchManagedProducts()
+      .then((data) => { if (!cancelled) setManagedProducts(data); })
+      .catch((loadError) => {
+        if (!cancelled) setManagedProductsError(loadError instanceof Error ? loadError.message : "No se pudo cargar el catálogo.");
+      })
+      .finally(() => { if (!cancelled) setLoadingManagedProducts(false); });
+    return () => { cancelled = true; };
+  }, [canManageProducts, fetchManagedProducts]);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,21 +139,20 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
     setProductMessage("");
 
     try {
+      const formData = new FormData();
+      formData.append("product", new Blob([JSON.stringify({
+        name: productForm.name.trim(),
+        model: productForm.model.trim(),
+        category: productForm.category,
+        description: productForm.description.trim(),
+        price: Number(productForm.price),
+        stock: Number(productForm.stock),
+      })], { type: "application/json" }));
+      formData.append("image", productForm.image);
       const response = await apiFetch("/api/products", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: productForm.name.trim(),
-          model: productForm.model.trim(),
-          imageUrl: productForm.imageUrl.trim(),
-          category: productForm.category,
-          description: productForm.description.trim(),
-          price: Number(productForm.price),
-          stock: Number(productForm.stock),
-        }),
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
       });
       const data = await response.json().catch(() => ({}));
 
@@ -131,11 +162,50 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
 
       setProductMessage(`Producto “${data.name}” agregado al catálogo (#${data.id}).`);
       setProductForm(emptyProductForm);
+      setProductImageInputKey((key) => key + 1);
+      setManagedProducts((current) => [data, ...current.filter((product) => product.id !== data.id)]);
       onProductCreated?.(data);
     } catch (createError) {
       setProductError(createError instanceof Error ? createError.message : "No se pudo agregar el producto.");
     } finally {
       setCreatingProduct(false);
+    }
+  };
+
+  const selectProductImage = (productId, file, clearInput) => {
+    setImageUploadError("");
+    if (file && file.size > MAX_PRODUCT_IMAGE_SIZE) {
+      clearInput?.();
+      setImageUploadError("La imagen no puede superar 5 MB.");
+      return;
+    }
+    setImageFiles((current) => ({ ...current, [productId]: file ?? null }));
+  };
+
+  const updateProductImage = async (productId) => {
+    const image = imageFiles[productId];
+    if (!image) return;
+    setUploadingImageId(productId);
+    setImageUploadError("");
+    try {
+      const formData = new FormData();
+      formData.append("image", image);
+      const response = await apiFetch(`/api/products/${productId}/image`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || `No se pudo actualizar la imagen (HTTP ${response.status}).`);
+      }
+      setManagedProducts((current) => current.map((product) => product.id === productId ? data : product));
+      setImageFiles((current) => ({ ...current, [productId]: null }));
+      onProductCreated?.(data);
+    } catch (uploadError) {
+      setImageUploadError(uploadError instanceof Error ? uploadError.message : "No se pudo actualizar la imagen.");
+    } finally {
+      setUploadingImageId(null);
     }
   };
 
@@ -157,7 +227,7 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
         </div>
       </div>
 
-      {(user.role === "EMPLOYEE" || user.role === "ADMIN") && (
+      {canManageProducts && (
         <details className="staff-account-panel product-management-panel">
           <summary className="staff-account-toggle">
             <span>
@@ -174,14 +244,21 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
               <label>Modelo
                 <input value={productForm.model} onChange={(event) => setProductForm({ ...productForm, model: event.target.value })} maxLength={120} />
               </label>
-              <label className="product-image-url-field">URL pública de la imagen (HTTPS)
+              <label className="product-image-file-field">Imagen del producto (JPG, PNG o WEBP · máximo 5 MB)
                 <input
-                  type="url"
-                  value={productForm.imageUrl}
-                  onChange={(event) => setProductForm({ ...productForm, imageUrl: event.target.value })}
-                  placeholder="https://sitio.com/imagen-del-producto.jpg"
-                  pattern="https://.*"
-                  maxLength={2048}
+                  key={productImageInputKey}
+                  type="file"
+                  accept={PRODUCT_IMAGE_TYPES}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    if (file && file.size > MAX_PRODUCT_IMAGE_SIZE) {
+                      event.target.value = "";
+                      setProductError("La imagen no puede superar 5 MB.");
+                      return;
+                    }
+                    setProductError("");
+                    setProductForm({ ...productForm, image: file });
+                  }}
                   required
                 />
               </label>
@@ -208,6 +285,69 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
             </form>
             {productMessage && <p className="dashboard-success" role="status">{productMessage}</p>}
             {productError && <p className="orders-error" role="alert">{productError}</p>}
+          </div>
+        </details>
+      )}
+
+      {canManageProducts && (
+        <details className="staff-account-panel product-management-panel">
+          <summary className="staff-account-toggle">
+            <span>
+              <strong>Actualizar imágenes del catálogo</strong>
+              <small>Selecciona una foto para cambiar la de un producto existente.</small>
+            </span>
+            <span className="staff-account-toggle-icon" aria-hidden="true">⌄</span>
+          </summary>
+          <div className="staff-account-content">
+            {loadingManagedProducts && <p className="orders-description">Cargando productos…</p>}
+            {managedProductsError && <p className="orders-error" role="alert">{managedProductsError}</p>}
+            {imageUploadError && <p className="orders-error" role="alert">{imageUploadError}</p>}
+            {!loadingManagedProducts && !managedProductsError && managedProducts.length === 0 && (
+              <p className="orders-description">Todavía no hay productos en el catálogo.</p>
+            )}
+            {managedProducts.length > 0 && (
+              <div className="product-image-management-list">
+                {managedProducts.map((product) => (
+                  <article className="product-image-management-item" key={product.id}>
+                    <div className="product-image-management-info">
+                      <div className="product-image-management-thumbnail">
+                        <span>{(product.name || "P").trim().charAt(0).toUpperCase()}</span>
+                        {product.imageUrl && (
+                          <img src={product.imageUrl} alt="" onError={(event) => { event.currentTarget.hidden = true; }} />
+                        )}
+                      </div>
+                      <div className="product-image-management-name">
+                        <strong>{product.name}</strong>
+                        <small>{product.imageUrl ? "Imagen cargada" : "Sin imagen"}</small>
+                      </div>
+                    </div>
+                    <div className="product-image-change-controls">
+                      <label>
+                        <span>{imageFiles[product.id]?.name ?? "Seleccionar imagen"}</span>
+                        <input
+                          key={`${product.id}-${product.imageUrl ?? "empty"}`}
+                          type="file"
+                          accept={PRODUCT_IMAGE_TYPES}
+                          onChange={(event) => selectProductImage(
+                            product.id,
+                            event.target.files?.[0] ?? null,
+                            () => { event.target.value = ""; }
+                          )}
+                        />
+                      </label>
+                      <button
+                        className="clear-search-button"
+                        type="button"
+                        onClick={() => updateProductImage(product.id)}
+                        disabled={!imageFiles[product.id] || uploadingImageId === product.id}
+                      >
+                        {uploadingImageId === product.id ? "Subiendo…" : "Guardar imagen"}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
         </details>
       )}
