@@ -834,6 +834,7 @@ function App({ initialAuthError = "" }) {
               user={currentUser}
               token={token}
               onClose={() => setShowOrderHistory(false)}
+              onProductCreated={(product) => setProducts((currentProducts) => [...currentProducts, product])}
             />
           </section>
         </div>

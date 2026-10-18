@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import "./RoleDashboard.css";
+import { apiFetch } from "./api";
 
 const money = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
 const statusLabels = { PENDING: "Pendiente", PAID: "Pagado", CANCELLED: "Cancelado" };
 const roleLabels = { CUSTOMER: "Cliente", EMPLOYEE: "Empleado", ADMIN: "Administrador" };
+const emptyProductForm = { name: "", model: "", description: "", price: "", stock: "0" };
 
-export default function RoleDashboard({ user, token, onClose }) {
+export default function RoleDashboard({ user, token, onClose, onProductCreated }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -14,12 +16,16 @@ export default function RoleDashboard({ user, token, onClose }) {
   const [accountMessage, setAccountMessage] = useState("");
   const [accountError, setAccountError] = useState("");
   const [creatingAccount, setCreatingAccount] = useState(false);
+  const [productForm, setProductForm] = useState(emptyProductForm);
+  const [productMessage, setProductMessage] = useState("");
+  const [productError, setProductError] = useState("");
+  const [creatingProduct, setCreatingProduct] = useState(false);
 
   const fetchOrders = useCallback(async () => {
     const path = user.role === "CUSTOMER"
       ? "/api/orders/mine?page=0&size=100"
       : "/api/orders?page=0&size=100&sort=createdAt,desc";
-    const response = await fetch(path, { headers: { Authorization: `Bearer ${token}` } });
+    const response = await apiFetch(path, { headers: { Authorization: `Bearer ${token}` } });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(data.detail || data.message || `No se pudieron cargar los pedidos (HTTP ${response.status}).`);
@@ -54,7 +60,7 @@ export default function RoleDashboard({ user, token, onClose }) {
     setBusyOrderId(orderId);
     setError("");
     try {
-      const response = await fetch(`/api/orders/${orderId}/status`, {
+      const response = await apiFetch(`/api/orders/${orderId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status }),
@@ -75,7 +81,7 @@ export default function RoleDashboard({ user, token, onClose }) {
     setAccountError("");
     setAccountMessage("");
     try {
-      const response = await fetch("/api/auth/users", {
+      const response = await apiFetch("/api/auth/users", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(staffForm),
@@ -88,6 +94,43 @@ export default function RoleDashboard({ user, token, onClose }) {
       setAccountError(createError instanceof Error ? createError.message : "No se pudo crear la cuenta.");
     } finally {
       setCreatingAccount(false);
+    }
+  };
+
+  const createProduct = async (event) => {
+    event.preventDefault();
+    setCreatingProduct(true);
+    setProductError("");
+    setProductMessage("");
+
+    try {
+      const response = await apiFetch("/api/products", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: productForm.name.trim(),
+          model: productForm.model.trim(),
+          description: productForm.description.trim(),
+          price: Number(productForm.price),
+          stock: Number(productForm.stock),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || `No se pudo agregar el producto (HTTP ${response.status}).`);
+      }
+
+      setProductMessage(`Producto “${data.name}” agregado al catálogo (#${data.id}).`);
+      setProductForm(emptyProductForm);
+      onProductCreated?.(data);
+    } catch (createError) {
+      setProductError(createError instanceof Error ? createError.message : "No se pudo agregar el producto.");
+    } finally {
+      setCreatingProduct(false);
     }
   };
 
@@ -108,6 +151,42 @@ export default function RoleDashboard({ user, token, onClose }) {
           </button>
         </div>
       </div>
+
+      {(user.role === "EMPLOYEE" || user.role === "ADMIN") && (
+        <details className="staff-account-panel product-management-panel">
+          <summary className="staff-account-toggle">
+            <span>
+              <strong>Agregar producto al catálogo</strong>
+              <small>Disponible para empleados y administradores.</small>
+            </span>
+            <span className="staff-account-toggle-icon" aria-hidden="true">⌄</span>
+          </summary>
+          <div className="staff-account-content">
+            <form className="staff-account-form" onSubmit={createProduct}>
+              <label>Nombre del producto
+                <input value={productForm.name} onChange={(event) => setProductForm({ ...productForm, name: event.target.value })} maxLength={150} required />
+              </label>
+              <label>Modelo
+                <input value={productForm.model} onChange={(event) => setProductForm({ ...productForm, model: event.target.value })} maxLength={120} />
+              </label>
+              <label className="product-description-field">Descripción
+                <textarea value={productForm.description} onChange={(event) => setProductForm({ ...productForm, description: event.target.value })} maxLength={5000} rows={3} />
+              </label>
+              <label>Precio (MXN)
+                <input type="number" value={productForm.price} onChange={(event) => setProductForm({ ...productForm, price: event.target.value })} min="0.01" step="0.01" required />
+              </label>
+              <label>Existencias
+                <input type="number" value={productForm.stock} onChange={(event) => setProductForm({ ...productForm, stock: event.target.value })} min="0" step="1" required />
+              </label>
+              <button className="checkout-button" type="submit" disabled={creatingProduct}>
+                {creatingProduct ? "Agregando producto..." : "Agregar producto"}
+              </button>
+            </form>
+            {productMessage && <p className="dashboard-success" role="status">{productMessage}</p>}
+            {productError && <p className="orders-error" role="alert">{productError}</p>}
+          </div>
+        </details>
+      )}
 
       {user.role === "ADMIN" && (
         <details className="staff-account-panel">

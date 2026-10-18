@@ -138,6 +138,7 @@
 
 .staff-account-form input,
 .staff-account-form select,
+.staff-account-form textarea,
 .order-status-control select {
   min-width: 0;
   padding: 10px 11px;
@@ -146,6 +147,15 @@
   border: 1px solid #d9ddd7;
   border-radius: 8px;
   font: inherit;
+}
+
+.staff-account-form textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.product-description-field {
+  grid-column: 1 / -1;
 }
 
 .staff-account-form .checkout-button {
