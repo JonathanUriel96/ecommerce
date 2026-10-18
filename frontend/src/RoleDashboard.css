@@ -169,6 +169,10 @@
   grid-column: 1 / -1;
 }
 
+.product-image-url-field {
+  grid-column: 1 / -1;
+}
+
 .staff-account-form .checkout-button {
   align-self: end;
 }

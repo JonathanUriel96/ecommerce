@@ -17,6 +17,9 @@ public class Product {
     @Column(length = 120)
     private String model;
 
+    @Column(name = "image_url", length = 2048)
+    private String imageUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ProductCategory category = ProductCategory.OTHER;
@@ -72,6 +75,14 @@ public class Product {
 
     public void setModel(String model) {
         this.model = model;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     public ProductCategory getCategory() {

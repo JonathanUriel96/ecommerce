@@ -6,7 +6,7 @@ import { PRODUCT_CATEGORIES } from "./productCategories";
 const money = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
 const statusLabels = { PENDING: "Pendiente", PAID: "Pagado", CANCELLED: "Cancelado" };
 const roleLabels = { CUSTOMER: "Cliente", EMPLOYEE: "Empleado", ADMIN: "Administrador" };
-const emptyProductForm = { name: "", model: "", category: "", description: "", price: "", stock: "0" };
+const emptyProductForm = { name: "", model: "", imageUrl: "", category: "", description: "", price: "", stock: "0" };
 
 export default function RoleDashboard({ user, token, onClose, onProductCreated }) {
   const [orders, setOrders] = useState([]);
@@ -116,6 +116,7 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
         body: JSON.stringify({
           name: productForm.name.trim(),
           model: productForm.model.trim(),
+          imageUrl: productForm.imageUrl.trim(),
           category: productForm.category,
           description: productForm.description.trim(),
           price: Number(productForm.price),
@@ -172,6 +173,17 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
               </label>
               <label>Modelo
                 <input value={productForm.model} onChange={(event) => setProductForm({ ...productForm, model: event.target.value })} maxLength={120} />
+              </label>
+              <label className="product-image-url-field">URL pública de la imagen (HTTPS)
+                <input
+                  type="url"
+                  value={productForm.imageUrl}
+                  onChange={(event) => setProductForm({ ...productForm, imageUrl: event.target.value })}
+                  placeholder="https://sitio.com/imagen-del-producto.jpg"
+                  pattern="https://.*"
+                  maxLength={2048}
+                  required
+                />
               </label>
               <label>Categoría
                 <select value={productForm.category} onChange={(event) => setProductForm({ ...productForm, category: event.target.value })} required>

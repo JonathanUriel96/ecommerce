@@ -652,11 +652,23 @@ function App({ initialAuthError = "" }) {
             )}
           </div>
 
-          <div className="hero-stamp" aria-hidden="true">
-            <span>{activeHeroProduct ? "DESTACADO" : "SELECCIÓN"}</span>
-            <strong>{String(heroSlideIndex + 1).padStart(2, "0")}</strong>
-            <span>{activeHeroProduct ? `DE ${heroProducts.length}` : "DE TEMPORADA"}</span>
-          </div>
+          {activeHeroProduct?.imageUrl ? (
+            <div className="hero-product-visual" aria-hidden="true">
+              <span>{(activeHeroProduct.name || "P").trim().charAt(0).toUpperCase()}</span>
+              <img
+                src={activeHeroProduct.imageUrl}
+                alt=""
+                loading="lazy"
+                onError={(event) => { event.currentTarget.hidden = true; }}
+              />
+            </div>
+          ) : (
+            <div className="hero-stamp" aria-hidden="true">
+              <span>{activeHeroProduct ? "DESTACADO" : "SELECCIÓN"}</span>
+              <strong>{String(heroSlideIndex + 1).padStart(2, "0")}</strong>
+              <span>{activeHeroProduct ? `DE ${heroProducts.length}` : "DE TEMPORADA"}</span>
+            </div>
+          )}
 
           {heroProducts.length > 1 && (
             <>
@@ -796,6 +808,16 @@ function App({ initialAuthError = "" }) {
                     <span className="product-initial">
                       {(product.name || "P").trim().charAt(0).toUpperCase()}
                     </span>
+                    {product.imageUrl && (
+                      <img
+                        className="product-image"
+                        src={product.imageUrl}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        onError={(event) => { event.currentTarget.hidden = true; }}
+                      />
+                    )}
                     <span className="product-number">
                       PRODUCTO #{product.id}
                     </span>

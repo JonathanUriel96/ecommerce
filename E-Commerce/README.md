@@ -49,6 +49,7 @@ El inicio de sesión devuelve un token Bearer que el frontend mantiene en la ses
 - `GET /api/products?page=0&size=20` y `GET /api/products/{id}`: catálogo público. El tamaño máximo de página es 100.
 - `POST /api/products`: agregar productos; requiere rol `EMPLOYEE` o `ADMIN`. `PUT /api/products/{id}` y `DELETE /api/products/{id}` requieren rol `ADMIN`. `DELETE` desactiva el producto.
 - Al crear o actualizar productos, `category` acepta `MOUSE`, `KEYBOARD`, `HEADPHONES`, `MONITOR` u `OTHER`. Los productos previos a la migración V6 se clasifican como `OTHER` hasta que se actualicen.
+- `imageUrl` guarda la URL HTTPS pública de la foto. La migración V7 agrega `image_url`; los productos anteriores quedan sin URL hasta que se les asigne una.
 - `POST /api/orders`: crear pedido; requiere rol `CUSTOMER`.
 - `GET /api/orders/mine`: ver los pedidos propios; requiere rol `CUSTOMER`.
 - `GET /api/orders` y `PATCH /api/orders/{id}/status`: consultar y actualizar pedidos; requieren rol `EMPLOYEE` o `ADMIN`.
@@ -56,6 +57,37 @@ El inicio de sesión devuelve un token Bearer que el frontend mantiene en la ses
 Para Postman, selecciona **Authorization → Bearer Token** y pega el campo `token` de la respuesta de `/api/auth/login`. Para productos se puede seguir usando **Basic Auth** con las credenciales del administrador configuradas en IntelliJ.
 
 La API pagina productos y pedidos y devuelve DTOs, no entidades JPA. Configura HTTPS al publicar la API en Internet.
+
+### Fotos de productos
+
+Sube cada foto a un servicio de imágenes que proporcione una URL pública HTTPS directa al archivo. No uses una ruta local (`C:\\...`), una URL `localhost` ni el enlace a una página de vista previa; la dirección debe abrir la imagen directamente. El formulario del panel de empleado/administrador pide esa URL al crear el producto y el catálogo y el carrusel la muestran.
+
+Ejemplo de cuerpo para `POST /api/products`:
+
+```json
+{
+  "name": "Mouse inalámbrico",
+  "model": "MOU-001",
+  "imageUrl": "https://imagenes.ejemplo.com/mouse-inalambrico.jpg",
+  "category": "MOUSE",
+  "description": "Mouse inalámbrico para oficina",
+  "price": 649.99,
+  "stock": 18
+}
+```
+
+Para asignar fotos a productos que ya existen en la base de datos, primero consulta sus identificadores y luego actualiza la URL correspondiente:
+
+```sql
+USE ecommerce_db;
+SELECT id, name, image_url FROM products;
+
+UPDATE products
+SET image_url = 'https://imagenes.ejemplo.com/mouse-inalambrico.jpg'
+WHERE id = 1;
+```
+
+Repite el `UPDATE` con el ID y URL de cada producto. Ejecuta la migración V7 antes de actualizar una base de datos existente; Flyway la aplica al desplegar el backend.
 
 ## Pruebas
 

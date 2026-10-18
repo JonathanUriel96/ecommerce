@@ -35,6 +35,7 @@ public class ProductService {
                 request.price(),
                 request.stock()
         );
+        product.setImageUrl(request.imageUrl());
         return productRepository.save(product);
     }
 
@@ -44,6 +45,7 @@ public class ProductService {
                 .map(product -> {
                     product.setName(request.name());
                     product.setModel(request.model());
+                    product.setImageUrl(request.imageUrl());
                     product.setCategory(request.category());
                     product.setDescription(request.description());
                     product.setPrice(request.price());
