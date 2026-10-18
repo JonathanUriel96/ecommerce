@@ -978,6 +978,41 @@
   outline: 2px solid #819f89;
 }
 
+.auth-password-field {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.auth-password-field input {
+  padding-right: 82px;
+}
+
+.password-visibility-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  padding: 5px;
+  color: #345a43;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.password-visibility-toggle:hover {
+  background: #eef3ee;
+}
+
+.password-visibility-toggle:focus-visible {
+  outline: 2px solid #819f89;
+  outline-offset: 2px;
+}
+
 .auth-form small {
   color: #69736b;
   line-height: 1.5;

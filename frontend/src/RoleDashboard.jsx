@@ -13,6 +13,7 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
   const [error, setError] = useState("");
   const [busyOrderId, setBusyOrderId] = useState(null);
   const [staffForm, setStaffForm] = useState({ name: "", username: "", email: "", password: "", role: "EMPLOYEE" });
+  const [showStaffPassword, setShowStaffPassword] = useState(false);
   const [accountMessage, setAccountMessage] = useState("");
   const [accountError, setAccountError] = useState("");
   const [creatingAccount, setCreatingAccount] = useState(false);
@@ -90,6 +91,7 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
       if (!response.ok) throw new Error(data.detail || data.message || `No se pudo crear la cuenta (HTTP ${response.status}).`);
       setAccountMessage(`Cuenta de ${roleLabels[data.role] ?? data.role} creada para ${data.username}.`);
       setStaffForm({ name: "", username: "", email: "", password: "", role: "EMPLOYEE" });
+      setShowStaffPassword(false);
     } catch (createError) {
       setAccountError(createError instanceof Error ? createError.message : "No se pudo crear la cuenta.");
     } finally {
@@ -189,7 +191,7 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
       )}
 
       {user.role === "ADMIN" && (
-        <details className="staff-account-panel">
+        <details className="staff-account-panel" onToggle={(event) => { if (!event.currentTarget.open) setShowStaffPassword(false); }}>
           <summary className="staff-account-toggle">
             <span>
               <strong>Crear cuenta de empleado o administrador</strong>
@@ -209,7 +211,18 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
                 <input type="email" value={staffForm.email} onChange={(event) => setStaffForm({ ...staffForm, email: event.target.value })} maxLength={254} required />
               </label>
               <label>Contraseña temporal
-                <input type="password" value={staffForm.password} onChange={(event) => setStaffForm({ ...staffForm, password: event.target.value })} minLength={10} maxLength={72} autoComplete="new-password" required />
+                <span className="staff-password-field">
+                  <input type={showStaffPassword ? "text" : "password"} value={staffForm.password} onChange={(event) => setStaffForm({ ...staffForm, password: event.target.value })} minLength={10} maxLength={72} autoComplete="new-password" required />
+                  <button
+                    className="password-visibility-toggle"
+                    type="button"
+                    onClick={() => setShowStaffPassword((visible) => !visible)}
+                    aria-label={showStaffPassword ? "Ocultar contraseña temporal" : "Mostrar contraseña temporal"}
+                    aria-pressed={showStaffPassword}
+                  >
+                    {showStaffPassword ? "Ocultar" : "Mostrar"}
+                  </button>
+                </span>
               </label>
               <label>Rol
                 <select value={staffForm.role} onChange={(event) => setStaffForm({ ...staffForm, role: event.target.value })}>

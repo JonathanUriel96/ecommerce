@@ -28,6 +28,7 @@ function App({ initialAuthError = "" }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [authMode, setAuthMode] = useState(() => initialAuthError ? "login" : null);
   const [authForm, setAuthForm] = useState({ name: "", email: "", identifier: "", password: "" });
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
   const [authError, setAuthError] = useState(initialAuthError);
   const [authLoading, setAuthLoading] = useState(false);
   const [authProviders, setAuthProviders] = useState({ googleEnabled: false, googleAuthorizationUrl: "" });
@@ -322,6 +323,7 @@ function App({ initialAuthError = "" }) {
       setToken(result.token);
       setAuthMode(null);
       setAuthForm({ name: "", email: "", identifier: "", password: "" });
+      setShowAuthPassword(false);
     } catch (authRequestError) {
       setAuthError(authRequestError instanceof Error ? authRequestError.message : "No se pudo completar el acceso.");
     } finally {
@@ -389,8 +391,8 @@ function App({ initialAuthError = "" }) {
             </>
           ) : (
             <>
-              <button className="cart-toggle" type="button" onClick={() => { setAuthMode("login"); setAuthError(""); }}>Iniciar sesión</button>
-              <button className="cart-toggle auth-register-button" type="button" onClick={() => { setAuthMode("register"); setAuthError(""); }}>Crear cuenta</button>
+              <button className="cart-toggle" type="button" onClick={() => { setAuthMode("login"); setAuthError(""); setShowAuthPassword(false); }}>Iniciar sesión</button>
+              <button className="cart-toggle auth-register-button" type="button" onClick={() => { setAuthMode("register"); setAuthError(""); setShowAuthPassword(false); }}>Crear cuenta</button>
             </>
           )}
 
@@ -411,14 +413,14 @@ function App({ initialAuthError = "" }) {
 
       {authMode && (
         <div className="auth-overlay" role="presentation">
-          <button className="auth-backdrop" type="button" aria-label="Cerrar acceso" onClick={() => setAuthMode(null)} />
+          <button className="auth-backdrop" type="button" aria-label="Cerrar acceso" onClick={() => { setAuthMode(null); setShowAuthPassword(false); }} />
           <section className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
             <div className="auth-modal-header">
               <div>
                 <p className="eyebrow">URBANSHOP</p>
                 <h2 id="auth-title">{authMode === "register" ? "Crear cuenta de cliente" : "Iniciar sesión"}</h2>
               </div>
-              <button className="cart-close" type="button" onClick={() => setAuthMode(null)} aria-label="Cerrar">×</button>
+              <button className="cart-close" type="button" onClick={() => { setAuthMode(null); setShowAuthPassword(false); }} aria-label="Cerrar">×</button>
             </div>
             <p className="auth-intro">
               {authMode === "register" ? "El registro público crea una cuenta de cliente." : "Accede con tu correo o usuario."}
@@ -439,7 +441,18 @@ function App({ initialAuthError = "" }) {
                 </label>
               )}
               <label>Contraseña
-                <input type="password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} autoComplete={authMode === "register" ? "new-password" : "current-password"} minLength={authMode === "register" ? 10 : undefined} maxLength={72} required />
+                <span className="auth-password-field">
+                  <input type={showAuthPassword ? "text" : "password"} value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} autoComplete={authMode === "register" ? "new-password" : "current-password"} minLength={authMode === "register" ? 10 : undefined} maxLength={72} required />
+                  <button
+                    className="password-visibility-toggle"
+                    type="button"
+                    onClick={() => setShowAuthPassword((visible) => !visible)}
+                    aria-label={showAuthPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    aria-pressed={showAuthPassword}
+                  >
+                    {showAuthPassword ? "Ocultar" : "Mostrar"}
+                  </button>
+                </span>
               </label>
               {authMode === "register" && <small>Usa al menos 10 caracteres. Las cuentas de empleado y administrador las crea un administrador.</small>}
               {authError && <p className="auth-error" role="alert">{authError}</p>}
@@ -463,7 +476,7 @@ function App({ initialAuthError = "" }) {
             )}
             <p className="auth-switch">
               {authMode === "register" ? "¿Ya tienes cuenta?" : "¿Aún no tienes cuenta?"}{" "}
-              <button type="button" onClick={() => { setAuthMode(authMode === "register" ? "login" : "register"); setAuthError(""); }}>
+              <button type="button" onClick={() => { setAuthMode(authMode === "register" ? "login" : "register"); setAuthError(""); setShowAuthPassword(false); }}>
                 {authMode === "register" ? "Inicia sesión" : "Regístrate como cliente"}
               </button>
             </p>
@@ -583,7 +596,7 @@ function App({ initialAuthError = "" }) {
                   ) : (
                     <div className="checkout-login-notice">
                       <p>Inicia sesión con una cuenta de cliente para realizar la compra.</p>
-                      {!currentUser && <button className="checkout-button" type="button" onClick={() => { setAuthMode("login"); setIsCartOpen(false); }}>Iniciar sesión</button>}
+                      {!currentUser && <button className="checkout-button" type="button" onClick={() => { setAuthMode("login"); setIsCartOpen(false); setShowAuthPassword(false); }}>Iniciar sesión</button>}
                     </div>
                   )}
                 </form>

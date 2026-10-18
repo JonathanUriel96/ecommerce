@@ -154,6 +154,17 @@
   resize: vertical;
 }
 
+.staff-password-field {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.staff-password-field input {
+  width: 100%;
+  padding-right: 82px;
+}
+
 .product-description-field {
   grid-column: 1 / -1;
 }
