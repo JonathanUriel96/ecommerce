@@ -178,6 +178,42 @@
   gap: 12px;
 }
 
+.product-edit-list {
+  display: grid;
+  gap: 12px;
+}
+
+.product-edit-card {
+  min-width: 0;
+  padding: 14px;
+  background: #fbfcfa;
+  border: 1px solid #e3e8e1;
+  border-radius: 12px;
+}
+
+.product-edit-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.product-edit-card-heading .product-image-management-name {
+  flex: 1 1 auto;
+}
+
+.product-edit-form {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e3e8e1;
+}
+
+.product-edit-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .product-image-management-item {
   min-width: 0;
   padding: 12px;

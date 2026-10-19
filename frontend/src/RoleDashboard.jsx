@@ -10,7 +10,7 @@ const MAX_PRODUCT_IMAGE_SIZE = 5 * 1024 * 1024;
 const PRODUCT_IMAGE_TYPES = "image/jpeg,image/png,image/webp";
 const emptyProductForm = { name: "", model: "", image: null, category: "", description: "", price: "", stock: "0" };
 
-export default function RoleDashboard({ user, token, onClose, onProductCreated }) {
+export default function RoleDashboard({ user, token, onClose, onProductChanged }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -28,6 +28,10 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
   const [managedProducts, setManagedProducts] = useState([]);
   const [loadingManagedProducts, setLoadingManagedProducts] = useState(true);
   const [managedProductsError, setManagedProductsError] = useState("");
+  const [editingProductId, setEditingProductId] = useState(null);
+  const [savingProductId, setSavingProductId] = useState(null);
+  const [productEditMessage, setProductEditMessage] = useState("");
+  const [productEditError, setProductEditError] = useState("");
   const [imageFiles, setImageFiles] = useState({});
   const [uploadingImageId, setUploadingImageId] = useState(null);
   const [imageUploadError, setImageUploadError] = useState("");
@@ -164,11 +168,52 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
       setProductForm(emptyProductForm);
       setProductImageInputKey((key) => key + 1);
       setManagedProducts((current) => [data, ...current.filter((product) => product.id !== data.id)]);
-      onProductCreated?.(data);
+      onProductChanged?.(data);
     } catch (createError) {
       setProductError(createError instanceof Error ? createError.message : "No se pudo agregar el producto.");
     } finally {
       setCreatingProduct(false);
+    }
+  };
+
+  const updateProduct = async (event, product) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const request = {
+      name: String(formData.get("name") ?? "").trim(),
+      model: String(formData.get("model") ?? "").trim(),
+      imageUrl: product.imageUrl ?? null,
+      category: String(formData.get("category") ?? "OTHER"),
+      description: String(formData.get("description") ?? "").trim(),
+      price: Number(formData.get("price")),
+      stock: Number(formData.get("stock")),
+    };
+
+    setSavingProductId(product.id);
+    setProductEditError("");
+    setProductEditMessage("");
+    try {
+      const response = await apiFetch(`/api/products/${product.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(request),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || `No se pudo actualizar el producto (HTTP ${response.status}).`);
+      }
+
+      setManagedProducts((current) => current.map((item) => item.id === product.id ? data : item));
+      onProductChanged?.(data);
+      setEditingProductId(null);
+      setProductEditMessage(`Se actualizaron los datos de “${data.name}”.`);
+    } catch (updateError) {
+      setProductEditError(updateError instanceof Error ? updateError.message : "No se pudo actualizar el producto.");
+    } finally {
+      setSavingProductId(null);
     }
   };
 
@@ -201,7 +246,7 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
       }
       setManagedProducts((current) => current.map((product) => product.id === productId ? data : product));
       setImageFiles((current) => ({ ...current, [productId]: null }));
-      onProductCreated?.(data);
+      onProductChanged?.(data);
     } catch (uploadError) {
       setImageUploadError(uploadError instanceof Error ? uploadError.message : "No se pudo actualizar la imagen.");
     } finally {
@@ -226,6 +271,94 @@ export default function RoleDashboard({ user, token, onClose, onProductCreated }
           </button>
         </div>
       </div>
+
+      {canManageProducts && (
+        <details className="staff-account-panel product-management-panel">
+          <summary className="staff-account-toggle">
+            <span>
+              <strong>Editar productos del catálogo</strong>
+              <small>Modifica nombre, modelo, categoría, descripción, precio o existencias.</small>
+            </span>
+            <span className="staff-account-toggle-icon" aria-hidden="true">⌄</span>
+          </summary>
+          <div className="staff-account-content">
+            {loadingManagedProducts && <p className="orders-description">Cargando productos…</p>}
+            {managedProductsError && <p className="orders-error" role="alert">{managedProductsError}</p>}
+            {productEditMessage && <p className="dashboard-success" role="status">{productEditMessage}</p>}
+            {productEditError && <p className="orders-error" role="alert">{productEditError}</p>}
+            {!loadingManagedProducts && !managedProductsError && managedProducts.length === 0 && (
+              <p className="orders-description">Todavía no hay productos en el catálogo.</p>
+            )}
+            {managedProducts.length > 0 && (
+              <div className="product-edit-list">
+                {managedProducts.map((product) => (
+                  <article className="product-edit-card" key={product.id}>
+                    <div className="product-edit-card-heading">
+                      <div className="product-image-management-thumbnail">
+                        <span>{(product.name || "P").trim().charAt(0).toUpperCase()}</span>
+                        {product.imageUrl && (
+                          <img src={product.imageUrl} alt="" onError={(event) => { event.currentTarget.hidden = true; }} />
+                        )}
+                      </div>
+                      <div className="product-image-management-name">
+                        <strong>{product.name}</strong>
+                        <small>Producto #{product.id}</small>
+                      </div>
+                      {editingProductId !== product.id && (
+                        <button
+                          className="clear-search-button"
+                          type="button"
+                          onClick={() => {
+                            setEditingProductId(product.id);
+                            setProductEditError("");
+                            setProductEditMessage("");
+                          }}
+                        >
+                          Editar datos
+                        </button>
+                      )}
+                    </div>
+                    {editingProductId === product.id && (
+                      <form className="staff-account-form product-edit-form" onSubmit={(event) => updateProduct(event, product)}>
+                        <label>Nombre del producto
+                          <input name="name" defaultValue={product.name} maxLength={150} required />
+                        </label>
+                        <label>Modelo
+                          <input name="model" defaultValue={product.model ?? ""} maxLength={120} />
+                        </label>
+                        <label>Categoría
+                          <select name="category" defaultValue={product.category ?? "OTHER"} required>
+                            {PRODUCT_CATEGORIES.map((category) => (
+                              <option key={category.value} value={category.value}>{category.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>Precio (MXN)
+                          <input name="price" type="number" defaultValue={product.price} min="0.01" step="0.01" required />
+                        </label>
+                        <label>Existencias
+                          <input name="stock" type="number" defaultValue={product.stock} min="0" step="1" required />
+                        </label>
+                        <label className="product-description-field">Descripción
+                          <textarea name="description" defaultValue={product.description ?? ""} maxLength={5000} rows={3} />
+                        </label>
+                        <div className="product-edit-actions">
+                          <button className="checkout-button" type="submit" disabled={savingProductId === product.id}>
+                            {savingProductId === product.id ? "Guardando cambios…" : "Guardar cambios"}
+                          </button>
+                          <button className="clear-search-button" type="button" disabled={savingProductId === product.id} onClick={() => setEditingProductId(null)}>
+                            Cancelar
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </details>
+      )}
 
       {canManageProducts && (
         <details className="staff-account-panel product-management-panel">

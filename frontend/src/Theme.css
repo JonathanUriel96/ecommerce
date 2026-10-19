@@ -1,0 +1,464 @@
+.app-shell {
+  min-height: 100vh;
+  color: #202922;
+  background: #f5f6f1;
+  transition: color 220ms ease, background-color 220ms ease;
+}
+
+.theme-transition-effect {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  pointer-events: none;
+  animation: tv-power-on 300ms ease-out both;
+}
+
+.theme-transition-effect--blue {
+  background: rgb(17 186 255 / 18%);
+  box-shadow: 0 0 14px 1px rgb(71 214 255 / 18%);
+}
+
+.theme-transition-effect--light {
+  background: rgb(245 252 255 / 16%);
+  box-shadow: 0 0 14px 1px rgb(255 255 255 / 16%);
+}
+
+@keyframes tv-power-on {
+  0% {
+    clip-path: inset(49.6% 0 49.6%);
+    opacity: 0;
+  }
+
+  9% {
+    clip-path: inset(49.2% 0 49.2%);
+    opacity: 0.3;
+  }
+
+  23% {
+    clip-path: inset(46% 0 46%);
+    opacity: 0.24;
+  }
+
+  40% {
+    clip-path: inset(0);
+    opacity: 0.16;
+  }
+
+  54% {
+    opacity: 0.08;
+  }
+
+  100% {
+    clip-path: inset(0);
+    opacity: 0;
+  }
+}
+
+.theme-toggle {
+  width: 76px;
+  min-width: 76px;
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  color: #12354b;
+  background: linear-gradient(135deg, #f5fcff, #e5f7ff);
+  border: 1px solid #8ed7f2;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgb(0 149 214 / 16%);
+  transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.theme-toggle-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.theme-switch-track {
+  width: 54px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #8299a7;
+  box-shadow: inset 0 1px 3px rgb(6 30 45 / 25%);
+  transition: background-color 200ms ease, box-shadow 200ms ease;
+}
+
+.theme-switch-thumb {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  color: #087eb2;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgb(0 20 34 / 28%);
+  transform: translateX(0);
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), color 180ms ease;
+}
+
+.theme-toggle.is-blue .theme-switch-thumb {
+  color: #0079b7;
+  transform: translateX(24px);
+}
+
+.theme-toggle:hover {
+  border-color: #16a9e4;
+  box-shadow: 0 6px 20px rgb(0 149 214 / 25%);
+  transform: translateY(-1px);
+}
+
+.theme-toggle:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.theme-toggle:focus-visible {
+  outline: 3px solid #00a8f0;
+  outline-offset: 3px;
+}
+
+.app-shell[data-theme="blue"] {
+  color-scheme: dark;
+  color: #e9f4ff;
+  background: #0a1726;
+}
+
+.app-shell[data-theme="blue"] .topbar {
+  background: #101f30;
+  border-bottom-color: #243d55;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+}
+
+.app-shell[data-theme="blue"] .brand,
+.app-shell[data-theme="blue"] .section-heading h2,
+.app-shell[data-theme="blue"] .product-info h3,
+.app-shell[data-theme="blue"] .price-row strong,
+.app-shell[data-theme="blue"] .product-model,
+.app-shell[data-theme="blue"] .cart-panel-header h2,
+.app-shell[data-theme="blue"] .checkout-form h3,
+.app-shell[data-theme="blue"] .auth-modal h2,
+.app-shell[data-theme="blue"] .auth-modal-header h2,
+.app-shell[data-theme="blue"] .checkout-account,
+.app-shell[data-theme="blue"] .dashboard-heading h2,
+.app-shell[data-theme="blue"] .dashboard-orders h3,
+.app-shell[data-theme="blue"] .staff-account-panel h3,
+.app-shell[data-theme="blue"] .staff-account-toggle strong,
+.app-shell[data-theme="blue"] .order-card h4,
+.app-shell[data-theme="blue"] .order-total strong,
+.app-shell[data-theme="blue"] .product-image-management-name strong {
+  color: #edf6ff;
+}
+
+.app-shell[data-theme="blue"] .brand-accent,
+.app-shell[data-theme="blue"] .eyebrow,
+.app-shell[data-theme="blue"] .catalog-label {
+  color: #28baff;
+}
+
+.app-shell[data-theme="blue"] .brand-mark {
+  color: #072038;
+  background: #08a9f4;
+}
+
+.app-shell[data-theme="blue"] .topbar-note,
+.app-shell[data-theme="blue"] .account-summary,
+.app-shell[data-theme="blue"] .product-count,
+.app-shell[data-theme="blue"] .stock-label,
+.app-shell[data-theme="blue"] .price-row span,
+.app-shell[data-theme="blue"] .description,
+.app-shell[data-theme="blue"] .cart-item-model,
+.app-shell[data-theme="blue"] .cart-empty,
+.app-shell[data-theme="blue"] .auth-switch,
+.app-shell[data-theme="blue"] .auth-form label,
+.app-shell[data-theme="blue"] .auth-form small,
+.app-shell[data-theme="blue"] .checkout-form label,
+.app-shell[data-theme="blue"] .checkout-login-notice,
+.app-shell[data-theme="blue"] .staff-account-toggle small,
+.app-shell[data-theme="blue"] .staff-account-toggle-icon,
+.app-shell[data-theme="blue"] .orders-description,
+.app-shell[data-theme="blue"] .order-customer,
+.app-shell[data-theme="blue"] .order-date,
+.app-shell[data-theme="blue"] .order-status-control,
+.app-shell[data-theme="blue"] .order-items,
+.app-shell[data-theme="blue"] .orders-empty,
+.app-shell[data-theme="blue"] .product-image-management-name small {
+  color: #a9bfd3;
+}
+
+.app-shell[data-theme="blue"] .cart-toggle,
+.app-shell[data-theme="blue"] .theme-toggle,
+.app-shell[data-theme="blue"] .clear-search-button,
+.app-shell[data-theme="blue"] .orders-close-button,
+.app-shell[data-theme="blue"] .quantity-button,
+.app-shell[data-theme="blue"] .password-visibility-toggle,
+.app-shell[data-theme="blue"] .order-status-control select {
+  color: #bceaff;
+  background: #142b40;
+  border-color: #31536f;
+}
+
+.app-shell[data-theme="blue"] .cart-toggle:hover,
+.app-shell[data-theme="blue"] .theme-toggle:hover,
+.app-shell[data-theme="blue"] .clear-search-button:hover,
+.app-shell[data-theme="blue"] .orders-close-button:hover,
+.app-shell[data-theme="blue"] .quantity-button:hover:not(:disabled),
+.app-shell[data-theme="blue"] .password-visibility-toggle:hover {
+  color: #fff;
+  background: #1b4668;
+  border-color: #1cb7fa;
+}
+
+.app-shell[data-theme="blue"] .theme-toggle {
+  color: #dff7ff;
+  background: linear-gradient(135deg, #102b43, #153c59);
+  border-color: #20baff;
+  box-shadow: 0 0 0 3px rgb(32 186 255 / 12%), 0 5px 22px rgb(0 153 224 / 28%);
+}
+
+.app-shell[data-theme="blue"] .theme-toggle:hover {
+  color: #fff;
+  background: linear-gradient(135deg, #15476a, #12628d);
+  border-color: #71dcff;
+  box-shadow: 0 0 0 4px rgb(32 186 255 / 16%), 0 7px 26px rgb(0 153 224 / 36%);
+}
+
+.app-shell[data-theme="blue"] .theme-switch-track {
+  background: #08a9f4;
+  box-shadow: inset 0 1px 3px rgb(0 26 48 / 34%), 0 0 12px rgb(8 169 244 / 32%);
+}
+
+.app-shell[data-theme="blue"] .page {
+  color: #e9f4ff;
+}
+
+.app-shell[data-theme="blue"] .hero {
+  color: #f4faff;
+  background: linear-gradient(112deg, #102b48, #075c99 75%, #087bb5);
+  border: 1px solid #1d78aa;
+  box-shadow: 0 18px 46px rgb(0 0 0 / 22%);
+}
+
+.app-shell[data-theme="blue"] .hero .eyebrow,
+.app-shell[data-theme="blue"] .hero-copy,
+.app-shell[data-theme="blue"] .hero-product-details > span {
+  color: #b7e8ff;
+}
+
+.app-shell[data-theme="blue"] .hero-stamp {
+  color: #06233d;
+  background: #20b8f5;
+  box-shadow: 0 12px 34px rgb(0 8 24 / 24%);
+}
+
+.app-shell[data-theme="blue"] .hero-cta {
+  color: #03223b;
+  background: #eaf8ff;
+}
+
+.app-shell[data-theme="blue"] .hero-cta:hover {
+  background: #81dcff;
+}
+
+.app-shell[data-theme="blue"] .hero-controls {
+  background: rgb(3 20 36 / 82%);
+  border-color: rgb(92 199 245 / 45%);
+}
+
+.app-shell[data-theme="blue"] .hero-dot.is-active {
+  background: #10b7ff;
+}
+
+.app-shell[data-theme="blue"] .hero-arrow:focus-visible,
+.app-shell[data-theme="blue"] .hero-dot:focus-visible,
+.app-shell[data-theme="blue"] .hero-pause:focus-visible {
+  outline-color: #23bfff;
+}
+
+.app-shell[data-theme="blue"] .product-card,
+.app-shell[data-theme="blue"] .product-edit-card,
+.app-shell[data-theme="blue"] .message,
+.app-shell[data-theme="blue"] .cart-panel,
+.app-shell[data-theme="blue"] .orders-panel,
+.app-shell[data-theme="blue"] .auth-modal,
+.app-shell[data-theme="blue"] .dashboard-heading,
+.app-shell[data-theme="blue"] .dashboard-orders,
+.app-shell[data-theme="blue"] .staff-account-panel,
+.app-shell[data-theme="blue"] .order-card,
+.app-shell[data-theme="blue"] .product-image-management-item {
+  color: #e9f4ff;
+  background: #11253a;
+  border-color: #29445e;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+}
+
+.app-shell[data-theme="blue"] .product-card--mouse .product-art,
+.app-shell[data-theme="blue"] .product-art {
+  background: linear-gradient(135deg, #16466b, #087fae);
+}
+
+.app-shell[data-theme="blue"] .product-card--keyboard .product-art {
+  background: linear-gradient(135deg, #17476e, #1268a1);
+}
+
+.app-shell[data-theme="blue"] .product-card--headphones .product-art {
+  background: linear-gradient(135deg, #253e70, #167bb3);
+}
+
+.app-shell[data-theme="blue"] .product-card--monitor .product-art {
+  background: linear-gradient(135deg, #164a68, #078bb7);
+}
+
+.app-shell[data-theme="blue"] .product-card--other .product-art {
+  background: linear-gradient(135deg, #25466a, #177bac);
+}
+
+.app-shell[data-theme="blue"] .product-number {
+  color: #073253;
+  background: rgb(227 246 255 / 92%);
+}
+
+.app-shell[data-theme="blue"] .product-category {
+  color: #8de0ff;
+  background: #153c59;
+}
+
+.app-shell[data-theme="blue"] .stock-dot {
+  background: #1cc3ff;
+}
+
+.app-shell[data-theme="blue"] .price-row {
+  border-top-color: #29445e;
+}
+
+.app-shell[data-theme="blue"] .add-button,
+.app-shell[data-theme="blue"] .checkout-button,
+.app-shell[data-theme="blue"] .staff-account-form .checkout-button {
+  color: #06213a;
+  background: #08a9f4;
+}
+
+.app-shell[data-theme="blue"] .add-button:hover:not(:disabled),
+.app-shell[data-theme="blue"] .checkout-button:hover:not(:disabled) {
+  background: #43c5ff;
+}
+
+.app-shell[data-theme="blue"] .add-button:disabled,
+.app-shell[data-theme="blue"] .checkout-button:disabled {
+  color: #92a8ba;
+  background: #26394a;
+}
+
+.app-shell[data-theme="blue"] .cart-panel-header,
+.app-shell[data-theme="blue"] .cart-item,
+.app-shell[data-theme="blue"] .cart-total,
+.app-shell[data-theme="blue"] .order-items,
+.app-shell[data-theme="blue"] .order-total {
+  border-color: #29445e;
+}
+
+.app-shell[data-theme="blue"] .cart-item-details strong,
+.app-shell[data-theme="blue"] .cart-total strong,
+.app-shell[data-theme="blue"] .order-items li span:last-child {
+  color: #edf6ff;
+}
+
+.app-shell[data-theme="blue"] .remove-button {
+  color: #ffc1bb;
+}
+
+.app-shell[data-theme="blue"] .catalog-controls label,
+.app-shell[data-theme="blue"] .staff-account-form label,
+.app-shell[data-theme="blue"] .product-image-file-field {
+  color: #b9cfe0;
+}
+
+.app-shell[data-theme="blue"] input,
+.app-shell[data-theme="blue"] textarea,
+.app-shell[data-theme="blue"] select {
+  color: #edf6ff;
+  background-color: #0b1c2e;
+  border-color: #31516c;
+}
+
+.app-shell[data-theme="blue"] input::placeholder,
+.app-shell[data-theme="blue"] textarea::placeholder {
+  color: #8fa9bf;
+}
+
+.app-shell[data-theme="blue"] select option {
+  color: #edf6ff;
+  background: #10253a;
+}
+
+.app-shell[data-theme="blue"] input:focus,
+.app-shell[data-theme="blue"] textarea:focus,
+.app-shell[data-theme="blue"] select:focus,
+.app-shell[data-theme="blue"] .auth-form input:focus,
+.app-shell[data-theme="blue"] .checkout-form textarea:focus {
+  border-color: #19b9ff;
+  outline-color: #19b9ff;
+}
+
+.app-shell[data-theme="blue"] .cart-overlay,
+.app-shell[data-theme="blue"] .orders-overlay,
+.app-shell[data-theme="blue"] .auth-overlay {
+  background: rgb(1 10 20 / 76%);
+}
+
+.app-shell[data-theme="blue"] .checkout-login-notice,
+.app-shell[data-theme="blue"] .staff-account-content,
+.app-shell[data-theme="blue"] .product-image-management-list {
+  border-color: #29445e;
+}
+
+.app-shell[data-theme="blue"] .staff-account-toggle:focus-visible {
+  outline-color: #19b9ff;
+}
+
+.app-shell[data-theme="blue"] .dashboard-success,
+.app-shell[data-theme="blue"] .checkout-message.success {
+  color: #a9f0dc;
+  background: #10383e;
+  border-color: #1c6875;
+}
+
+.app-shell[data-theme="blue"] .orders-error,
+.app-shell[data-theme="blue"] .auth-error,
+.app-shell[data-theme="blue"] .checkout-message.error,
+.app-shell[data-theme="blue"] .error-message {
+  color: #ffc1bb;
+  background: #3b2029;
+  border-color: #75414a;
+}
+
+@media (max-width: 650px) {
+  .theme-toggle {
+    width: 68px;
+    min-width: 68px;
+    min-height: 42px;
+    gap: 0;
+    padding: 5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell,
+  .theme-toggle,
+  .theme-switch-track,
+  .theme-switch-thumb {
+    transition: none;
+  }
+
+  .theme-transition-effect {
+    display: none;
+    animation: none;
+  }
+}

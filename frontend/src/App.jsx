@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./App.css";
+import "./Theme.css";
 import RoleDashboard from "./RoleDashboard.jsx";
 import { apiFetch } from "./api";
 import { PRODUCT_CATEGORIES, PRODUCT_CATEGORY_LABELS } from "./productCategories";
@@ -11,7 +12,15 @@ const formatoPrecio = new Intl.NumberFormat("es-MX", {
 
 const CART_STORAGE_KEY = "urban-shop-cart";
 const AUTH_STORAGE_KEY = "urban-shop-token";
+const THEME_STORAGE_KEY = "urban-shop-theme";
 const HERO_BACKGROUNDS = ["#253a32", "#35464b", "#4b3d35", "#403a54"];
+const CATEGORY_HERO_COPY = {
+  MOUSE: "Encuentra opciones precisas y cómodas para trabajar o jugar.",
+  KEYBOARD: "Explora teclados para completar tu espacio de trabajo o juego.",
+  HEADPHONES: "Descubre opciones para escuchar, jugar y comunicarte.",
+  MONITOR: "Encuentra la pantalla ideal para tu espacio y tus proyectos.",
+  OTHER: "Explora los productos disponibles en esta categoría.",
+};
 
 function App({ initialAuthError = "" }) {
   const [products, setProducts] = useState([]);
@@ -26,6 +35,14 @@ function App({ initialAuthError = "" }) {
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const [isHeroPaused, setIsHeroPaused] = useState(false);
+  const [theme, setTheme] = useState(() => {
+    try {
+      return window.localStorage.getItem(THEME_STORAGE_KEY) === "blue" ? "blue" : "light";
+    } catch {
+      return "light";
+    }
+  });
+  const [themeTransition, setThemeTransition] = useState("");
   const [token, setToken] = useState(() => window.sessionStorage.getItem(AUTH_STORAGE_KEY) ?? "");
   const [currentUser, setCurrentUser] = useState(null);
   const [authMode, setAuthMode] = useState(() => initialAuthError ? "login" : null);
@@ -82,27 +99,41 @@ function App({ initialAuthError = "" }) {
 
       return 0;
     });
-  const heroProducts = products.slice(-5);
-  const heroSlideIndex = heroProducts.length
-    ? activeHeroIndex % heroProducts.length
+  const heroCategories = PRODUCT_CATEGORIES
+    .map(({ value, label }) => ({
+      value,
+      label,
+      products: products.filter((product) => (product.category ?? "OTHER") === value),
+    }))
+    .filter((category) => category.products.length > 0);
+  const heroSlideIndex = heroCategories.length
+    ? activeHeroIndex % heroCategories.length
     : 0;
-  const activeHeroProduct = heroProducts[heroSlideIndex] ?? null;
+  const activeHeroCategory = heroCategories[heroSlideIndex] ?? null;
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // The selected theme still works for this visit if storage is unavailable.
+    }
+  }, [theme]);
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia?.(
       "(prefers-reduced-motion: reduce)",
     ).matches ?? false;
 
-    if (heroProducts.length < 2 || isHeroPaused || prefersReducedMotion) {
+    if (heroCategories.length < 2 || isHeroPaused || prefersReducedMotion) {
       return undefined;
     }
 
     const timer = window.setInterval(() => {
-      setActiveHeroIndex((currentIndex) => (currentIndex + 1) % heroProducts.length);
+      setActiveHeroIndex((currentIndex) => (currentIndex + 1) % heroCategories.length);
     }, 5000);
 
     return () => window.clearInterval(timer);
-  }, [activeHeroIndex, heroProducts.length, isHeroPaused]);
+  }, [activeHeroIndex, heroCategories.length, isHeroPaused]);
 
   const cartQuantity = (productId) =>
     cart.find((item) => item.id === productId)?.quantity ?? 0;
@@ -363,7 +394,14 @@ function App({ initialAuthError = "" }) {
   }, [cart]);
 
   return (
-    <>
+    <div className="app-shell" data-theme={theme}>
+      {themeTransition && (
+        <div
+          className={`theme-transition-effect theme-transition-effect--${themeTransition}`}
+          aria-hidden="true"
+          onAnimationEnd={() => setThemeTransition("")}
+        />
+      )}
       <header className="topbar">
         <a className="brand" href="/">
           <span className="brand-mark">U</span>
@@ -399,6 +437,29 @@ function App({ initialAuthError = "" }) {
               <button className="cart-toggle auth-register-button" type="button" onClick={() => { setAuthMode("register"); setAuthError(""); setShowAuthPassword(false); }}>Crear cuenta</button>
             </>
           )}
+
+          <button
+            className={`theme-toggle${theme === "blue" ? " is-blue" : ""}`}
+            type="button"
+            onClick={() => {
+              const nextTheme = theme === "blue" ? "light" : "blue";
+              const prefersReducedMotion = window.matchMedia?.(
+                "(prefers-reduced-motion: reduce)",
+              ).matches ?? false;
+              setThemeTransition(prefersReducedMotion ? "" : nextTheme);
+              setTheme(nextTheme);
+            }}
+            role="switch"
+            aria-checked={theme === "blue"}
+            aria-label="Modo azul"
+            title={theme === "blue" ? "Modo azul activado. Cambiar al tema claro" : "Modo azul desactivado. Activar tema azul"}
+          >
+            <span className="theme-switch-track" aria-hidden="true">
+              <span className="theme-switch-thumb">
+                <span className="theme-toggle-icon">{theme === "blue" ? "☾" : "☼"}</span>
+              </span>
+            </span>
+          </button>
 
           <button
             className="cart-toggle"
@@ -615,79 +676,65 @@ function App({ initialAuthError = "" }) {
           className="hero"
           role="region"
           aria-roledescription="carrusel"
-          aria-label="Productos destacados"
-          style={{ backgroundColor: HERO_BACKGROUNDS[heroSlideIndex % HERO_BACKGROUNDS.length] }}
+          aria-label="Categorías destacadas"
+          style={{ "--hero-background": HERO_BACKGROUNDS[heroSlideIndex % HERO_BACKGROUNDS.length] }}
         >
-          <div className="hero-content" key={activeHeroProduct?.id ?? "catalog-intro"}>
+          <div className="hero-content" key={activeHeroCategory?.value ?? "catalog-intro"}>
             <p className="eyebrow">
-              {activeHeroProduct ? "PRODUCTO DESTACADO" : "TIENDA EN LÍNEA"}
+              {activeHeroCategory ? "EXPLORA POR CATEGORÍA" : "TIENDA EN LÍNEA"}
             </p>
             <h1>
-              {activeHeroProduct?.name ?? (
+              {activeHeroCategory?.label ?? (
                 <>Encuentra algo<br />que te encante.</>
               )}
             </h1>
             <p className="hero-copy">
-              {activeHeroProduct
-                ? activeHeroProduct.description || "Descubre este producto en nuestro catálogo."
+              {activeHeroCategory
+                ? CATEGORY_HERO_COPY[activeHeroCategory.value] ?? CATEGORY_HERO_COPY.OTHER
                 : "Explora nuestro catálogo y descubre los productos disponibles."}
             </p>
-            {activeHeroProduct && (
+            {activeHeroCategory && (
               <div className="hero-product-details">
-                {activeHeroProduct.model?.trim() && (
-                  <span>Modelo: {activeHeroProduct.model}</span>
-                )}
-                <strong>{formatoPrecio.format(Number(activeHeroProduct.price))}</strong>
+                <span>{activeHeroCategory.products.length} {activeHeroCategory.products.length === 1 ? "producto disponible" : "productos disponibles"}</span>
                 <button
                   className="hero-cta"
                   type="button"
                   onClick={() => {
                     setSearchTerm("");
+                    setCategoryFilter(activeHeroCategory.value);
                     document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth" });
                   }}
                 >
-                  Explorar catálogo <span aria-hidden="true">→</span>
+                  Ver categoría <span aria-hidden="true">→</span>
                 </button>
               </div>
             )}
           </div>
 
-          {activeHeroProduct?.imageUrl ? (
-            <div className="hero-product-visual" aria-hidden="true">
-              <span>{(activeHeroProduct.name || "P").trim().charAt(0).toUpperCase()}</span>
-              <img
-                src={activeHeroProduct.imageUrl}
-                alt=""
-                loading="lazy"
-                onError={(event) => { event.currentTarget.hidden = true; }}
-              />
-            </div>
-          ) : (
-            <div className="hero-stamp" aria-hidden="true">
-              <span>{activeHeroProduct ? "DESTACADO" : "SELECCIÓN"}</span>
-              <strong>{String(heroSlideIndex + 1).padStart(2, "0")}</strong>
-              <span>{activeHeroProduct ? `DE ${heroProducts.length}` : "DE TEMPORADA"}</span>
-            </div>
-          )}
+          <div className="hero-stamp" aria-hidden="true">
+            <span>{activeHeroCategory ? "CATEGORÍA" : "SELECCIÓN"}</span>
+            <strong>{activeHeroCategory ? String(activeHeroCategory.products.length).padStart(2, "0") : "01"}</strong>
+            <span>{activeHeroCategory ? "PRODUCTOS" : "DE TEMPORADA"}</span>
+          </div>
 
-          {heroProducts.length > 1 && (
+          {heroCategories.length > 1 && (
             <>
               <button
                 className="hero-arrow hero-arrow--previous"
                 type="button"
-                aria-label="Producto destacado anterior"
-                onClick={() => setActiveHeroIndex((heroSlideIndex - 1 + heroProducts.length) % heroProducts.length)}
+                aria-label="Categoría anterior"
+                onClick={() => setActiveHeroIndex((heroSlideIndex - 1 + heroCategories.length) % heroCategories.length)}
               >
                 ‹
               </button>
               <div className="hero-controls" aria-label="Controles del carrusel">
-                <div className="hero-dots" aria-label={`Producto ${heroSlideIndex + 1} de ${heroProducts.length}`}>
-                  {heroProducts.map((product, index) => (
+                <div className="hero-dots" aria-label={activeHeroCategory ? `Categoría ${activeHeroCategory.label}, ${heroSlideIndex + 1} de ${heroCategories.length}` : "Categorías"}>
+                  {heroCategories.map((category, index) => (
                     <button
                       className={`hero-dot${index === heroSlideIndex ? " is-active" : ""}`}
                       type="button"
-                      key={product.id}
-                      aria-label={`Mostrar ${product.name}`}
+                      key={category.value}
+                      aria-label={`Mostrar categoría ${category.label}`}
                       aria-current={index === heroSlideIndex ? "true" : undefined}
                       onClick={() => setActiveHeroIndex(index)}
                     />
@@ -705,8 +752,8 @@ function App({ initialAuthError = "" }) {
               <button
                 className="hero-arrow hero-arrow--next"
                 type="button"
-                aria-label="Siguiente producto destacado"
-                onClick={() => setActiveHeroIndex((heroSlideIndex + 1) % heroProducts.length)}
+                aria-label="Siguiente categoría"
+                onClick={() => setActiveHeroIndex((heroSlideIndex + 1) % heroCategories.length)}
               >
                 ›
               </button>
@@ -886,7 +933,7 @@ function App({ initialAuthError = "" }) {
               user={currentUser}
               token={token}
               onClose={() => setShowOrderHistory(false)}
-              onProductCreated={(product) => setProducts((currentProducts) => (
+              onProductChanged={(product) => setProducts((currentProducts) => (
                 currentProducts.some((currentProduct) => currentProduct.id === product.id)
                   ? currentProducts.map((currentProduct) => currentProduct.id === product.id ? product : currentProduct)
                   : [...currentProducts, product]
@@ -895,7 +942,7 @@ function App({ initialAuthError = "" }) {
           </section>
         </div>
       )}
-    </>
+    </div>
   );
 }
 

@@ -59,7 +59,7 @@
   gap: 24px;
   overflow: hidden;
   color: #fff;
-  background: #253a32;
+  background: var(--hero-background, #253a32);
   border-radius: 24px;
   transition: background-color 500ms ease;
 }
