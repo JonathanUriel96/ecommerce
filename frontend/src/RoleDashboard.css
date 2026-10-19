@@ -169,6 +169,13 @@
   grid-column: 1 / -1;
 }
 
+.product-description-help {
+  color: #69736b;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
 .product-image-file-field {
   grid-column: 1 / -1;
 }
@@ -212,6 +219,122 @@
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.product-gallery-editor {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  background: #f5f7f3;
+  border: 1px solid #e3e8e1;
+  border-radius: 12px;
+}
+
+.product-gallery-editor-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #202922;
+}
+
+.product-gallery-editor-heading small {
+  color: #69736b;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.product-gallery-preview-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.product-gallery-preview {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #d9ddd7;
+  border-radius: 9px;
+}
+
+.product-gallery-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.product-gallery-preview > span {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  left: 3px;
+  padding: 3px 2px;
+  color: #fff;
+  background: rgb(32 41 34 / 82%);
+  border-radius: 4px;
+  font-size: 9px;
+  text-align: center;
+}
+
+.product-gallery-upload-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.product-gallery-file-field {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: grid;
+  gap: 6px;
+  color: #4d5b51;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.product-gallery-file-field input {
+  width: 100%;
+  font-size: 12px;
+}
+
+.app-shell[data-theme="blue"] .product-gallery-editor {
+  color: #edf6ff;
+  background: #0d2033;
+  border-color: #29445e;
+}
+
+.app-shell[data-theme="blue"] .product-gallery-editor-heading {
+  color: #edf6ff;
+}
+
+.app-shell[data-theme="blue"] .product-gallery-editor-heading small,
+.app-shell[data-theme="blue"] .product-gallery-file-field {
+  color: #a9bfd3;
+}
+
+.app-shell[data-theme="blue"] .product-gallery-preview {
+  background: #10253a;
+  border-color: #31536f;
+}
+
+.app-shell[data-theme="blue"] .product-image-management-thumbnail img {
+  background: transparent;
+}
+
+@media (max-width: 560px) {
+  .product-gallery-upload-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .product-gallery-upload-row > button {
+    width: 100%;
+  }
 }
 
 .product-image-management-item {

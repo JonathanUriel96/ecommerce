@@ -24,6 +24,9 @@ public record ProductRequest(
 
         ProductCategory category,
 
+        @Size(max = 280)
+        String shortDescription,
+
         @Size(max = 5_000)
         String description,
 

@@ -7,8 +7,28 @@ const money = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN
 const statusLabels = { PENDING: "Pendiente", PAID: "Pagado", CANCELLED: "Cancelado" };
 const roleLabels = { CUSTOMER: "Cliente", EMPLOYEE: "Empleado", ADMIN: "Administrador" };
 const MAX_PRODUCT_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_PRODUCT_IMAGES = 8;
 const PRODUCT_IMAGE_TYPES = "image/jpeg,image/png,image/webp";
-const emptyProductForm = { name: "", model: "", image: null, category: "", description: "", price: "", stock: "0" };
+const emptyProductForm = { name: "", model: "", image: null, category: "", shortDescription: "", description: "", price: "", stock: "0" };
+
+function getBriefDescription(description) {
+  const plainText = String(description ?? "")
+    .replace(/^\s*#{1,4}\s+/gm, "")
+    .replace(/^\s*[-*•]\s+/gm, "")
+    .replace(/\*\*|__/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (plainText.length <= 140) return plainText;
+  return `${plainText.slice(0, 137).replace(/\s+\S*$/, "").trimEnd()}…`;
+}
+
+function getProductImageUrls(product) {
+  const urls = Array.isArray(product.imageUrls)
+    ? product.imageUrls.filter((url) => typeof url === "string" && url.trim())
+    : [];
+  if (product.imageUrl && !urls.includes(product.imageUrl)) urls.unshift(product.imageUrl);
+  return urls;
+}
 
 export default function RoleDashboard({ user, token, onClose, onProductChanged }) {
   const [orders, setOrders] = useState([]);
@@ -148,6 +168,7 @@ export default function RoleDashboard({ user, token, onClose, onProductChanged }
         name: productForm.name.trim(),
         model: productForm.model.trim(),
         category: productForm.category,
+        shortDescription: productForm.shortDescription.trim(),
         description: productForm.description.trim(),
         price: Number(productForm.price),
         stock: Number(productForm.stock),
@@ -184,6 +205,7 @@ export default function RoleDashboard({ user, token, onClose, onProductChanged }
       model: String(formData.get("model") ?? "").trim(),
       imageUrl: product.imageUrl ?? null,
       category: String(formData.get("category") ?? "OTHER"),
+      shortDescription: String(formData.get("shortDescription") ?? "").trim(),
       description: String(formData.get("description") ?? "").trim(),
       price: Number(formData.get("price")),
       stock: Number(formData.get("stock")),
@@ -205,6 +227,9 @@ export default function RoleDashboard({ user, token, onClose, onProductChanged }
       if (!response.ok) {
         throw new Error(data.detail || data.message || `No se pudo actualizar el producto (HTTP ${response.status}).`);
       }
+      if (String(data.shortDescription ?? "") !== request.shortDescription) {
+        throw new Error("El servidor no confirmó la descripción breve. Despliega la versión actualizada del backend y verifica que Flyway aplicó la migración de productos.");
+      }
 
       setManagedProducts((current) => current.map((item) => item.id === product.id ? data : item));
       onProductChanged?.(data);
@@ -217,38 +242,47 @@ export default function RoleDashboard({ user, token, onClose, onProductChanged }
     }
   };
 
-  const selectProductImage = (productId, file, clearInput) => {
+  const selectProductImages = (productId, product, fileList, clearInput) => {
     setImageUploadError("");
-    if (file && file.size > MAX_PRODUCT_IMAGE_SIZE) {
+    const files = Array.from(fileList ?? []);
+    if (files.some((file) => file.size > MAX_PRODUCT_IMAGE_SIZE)) {
       clearInput?.();
-      setImageUploadError("La imagen no puede superar 5 MB.");
+      setImageFiles((current) => ({ ...current, [productId]: [] }));
+      setImageUploadError("Cada imagen debe pesar como máximo 5 MB.");
       return;
     }
-    setImageFiles((current) => ({ ...current, [productId]: file ?? null }));
+    if (getProductImageUrls(product).length + files.length > MAX_PRODUCT_IMAGES) {
+      clearInput?.();
+      setImageFiles((current) => ({ ...current, [productId]: [] }));
+      setImageUploadError(`Cada producto admite hasta ${MAX_PRODUCT_IMAGES} imágenes en total.`);
+      return;
+    }
+    setImageFiles((current) => ({ ...current, [productId]: files }));
   };
 
-  const updateProductImage = async (productId) => {
-    const image = imageFiles[productId];
-    if (!image) return;
+  const uploadProductImages = async (productId, product) => {
+    const images = imageFiles[productId] ?? [];
+    if (!images.length) return;
     setUploadingImageId(productId);
     setImageUploadError("");
     try {
       const formData = new FormData();
-      formData.append("image", image);
-      const response = await apiFetch(`/api/products/${productId}/image`, {
-        method: "PATCH",
+      images.forEach((image) => formData.append("images", image));
+      const response = await apiFetch(`/api/products/${productId}/images`, {
+        method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data.detail || data.message || `No se pudo actualizar la imagen (HTTP ${response.status}).`);
+        throw new Error(data.detail || data.message || `No se pudieron agregar las imágenes (HTTP ${response.status}).`);
       }
       setManagedProducts((current) => current.map((product) => product.id === productId ? data : product));
-      setImageFiles((current) => ({ ...current, [productId]: null }));
+      setImageFiles((current) => ({ ...current, [productId]: [] }));
       onProductChanged?.(data);
+      setProductEditMessage(`Se agregaron ${images.length} ${images.length === 1 ? "imagen" : "imágenes"} a “${product.name}”.`);
     } catch (uploadError) {
-      setImageUploadError(uploadError instanceof Error ? uploadError.message : "No se pudo actualizar la imagen.");
+      setImageUploadError(uploadError instanceof Error ? uploadError.message : "No se pudieron agregar las imágenes.");
     } finally {
       setUploadingImageId(null);
     }
@@ -277,7 +311,7 @@ export default function RoleDashboard({ user, token, onClose, onProductChanged }
           <summary className="staff-account-toggle">
             <span>
               <strong>Editar productos del catálogo</strong>
-              <small>Modifica nombre, modelo, categoría, descripción, precio o existencias.</small>
+              <small>Modifica los datos y las imágenes de cada producto.</small>
             </span>
             <span className="staff-account-toggle-icon" aria-hidden="true">⌄</span>
           </summary>
@@ -312,6 +346,7 @@ export default function RoleDashboard({ user, token, onClose, onProductChanged }
                             setEditingProductId(product.id);
                             setProductEditError("");
                             setProductEditMessage("");
+                            setImageUploadError("");
                           }}
                         >
                           Editar datos
@@ -339,9 +374,59 @@ export default function RoleDashboard({ user, token, onClose, onProductChanged }
                         <label>Existencias
                           <input name="stock" type="number" defaultValue={product.stock} min="0" step="1" required />
                         </label>
-                        <label className="product-description-field">Descripción
-                          <textarea name="description" defaultValue={product.description ?? ""} maxLength={5000} rows={3} />
+                        <label className="product-description-field">Descripción breve (catálogo)
+                          <textarea name="shortDescription" defaultValue={product.shortDescription ?? getBriefDescription(product.description)} maxLength={280} rows={2} required />
+                          <small className="product-description-help">Texto corto que aparece debajo del producto en la página principal (máximo 280 caracteres).</small>
                         </label>
+                        <label className="product-description-field">Detalles completos (Ver más detalles)
+                          <textarea name="description" defaultValue={product.description ?? ""} maxLength={5000} rows={3} />
+                          <small className="product-description-help">Esta descripción extensa se muestra solo en la página de detalles. Formato opcional: ### subtítulo, - punto de lista, **negritas**.</small>
+                        </label>
+                        <section className="product-gallery-editor" aria-label={`Imágenes de ${product.name}`}>
+                          <div className="product-gallery-editor-heading">
+                            <strong>Imágenes del producto</strong>
+                            <small>{getProductImageUrls(product).length} de {MAX_PRODUCT_IMAGES} imágenes</small>
+                          </div>
+                          <div className="product-gallery-preview-list">
+                            {getProductImageUrls(product).map((url, index) => (
+                              <div className="product-gallery-preview" key={`${product.id}-${url}`}>
+                                <img src={url} alt={`${product.name}, imagen ${index + 1}`} onError={(event) => { event.currentTarget.hidden = true; }} />
+                                {index === 0 && <span>Principal</span>}
+                              </div>
+                            ))}
+                          </div>
+                          {getProductImageUrls(product).length < MAX_PRODUCT_IMAGES && (
+                            <div className="product-gallery-upload-row">
+                              <label className="product-gallery-file-field">
+                                <span>{(imageFiles[product.id] ?? []).length
+                                  ? `${imageFiles[product.id].length} imágenes seleccionadas`
+                                  : "Agregar imágenes (JPG, PNG o WEBP · máximo 5 MB c/u)"}</span>
+                                <input
+                                  key={`${product.id}-${(imageFiles[product.id] ?? []).length}`}
+                                  type="file"
+                                  accept={PRODUCT_IMAGE_TYPES}
+                                  multiple
+                                  onChange={(event) => selectProductImages(
+                                    product.id,
+                                    product,
+                                    event.target.files,
+                                    () => { event.target.value = ""; }
+                                  )}
+                                />
+                              </label>
+                              <button
+                                className="clear-search-button"
+                                type="button"
+                                onClick={() => uploadProductImages(product.id, product)}
+                                disabled={!(imageFiles[product.id] ?? []).length || uploadingImageId === product.id}
+                              >
+                                {uploadingImageId === product.id ? "Subiendo…" : "Agregar imágenes"}
+                              </button>
+                            </div>
+                          )}
+                          {imageUploadError && editingProductId === product.id && <p className="orders-error" role="alert">{imageUploadError}</p>}
+                          <small className="product-description-help">La primera foto es la principal; las demás aparecerán como miniaturas en los detalles. Se permiten hasta {MAX_PRODUCT_IMAGES} imágenes.</small>
+                        </section>
                         <div className="product-edit-actions">
                           <button className="checkout-button" type="submit" disabled={savingProductId === product.id}>
                             {savingProductId === product.id ? "Guardando cambios…" : "Guardar cambios"}
@@ -403,8 +488,13 @@ export default function RoleDashboard({ user, token, onClose, onProductChanged }
                   ))}
                 </select>
               </label>
-              <label className="product-description-field">Descripción
+              <label className="product-description-field">Descripción breve (catálogo)
+                <textarea value={productForm.shortDescription} onChange={(event) => setProductForm({ ...productForm, shortDescription: event.target.value })} maxLength={280} rows={2} required />
+                <small className="product-description-help">Texto corto que aparece debajo del producto en la página principal (máximo 280 caracteres).</small>
+              </label>
+              <label className="product-description-field">Detalles completos (Ver más detalles)
                 <textarea value={productForm.description} onChange={(event) => setProductForm({ ...productForm, description: event.target.value })} maxLength={5000} rows={3} />
+                <small className="product-description-help">Esta descripción extensa se muestra solo en la página de detalles. Formato opcional: ### subtítulo, - punto de lista, **negritas**.</small>
               </label>
               <label>Precio (MXN)
                 <input type="number" value={productForm.price} onChange={(event) => setProductForm({ ...productForm, price: event.target.value })} min="0.01" step="0.01" required />
@@ -418,69 +508,6 @@ export default function RoleDashboard({ user, token, onClose, onProductChanged }
             </form>
             {productMessage && <p className="dashboard-success" role="status">{productMessage}</p>}
             {productError && <p className="orders-error" role="alert">{productError}</p>}
-          </div>
-        </details>
-      )}
-
-      {canManageProducts && (
-        <details className="staff-account-panel product-management-panel">
-          <summary className="staff-account-toggle">
-            <span>
-              <strong>Actualizar imágenes del catálogo</strong>
-              <small>Selecciona una foto para cambiar la de un producto existente.</small>
-            </span>
-            <span className="staff-account-toggle-icon" aria-hidden="true">⌄</span>
-          </summary>
-          <div className="staff-account-content">
-            {loadingManagedProducts && <p className="orders-description">Cargando productos…</p>}
-            {managedProductsError && <p className="orders-error" role="alert">{managedProductsError}</p>}
-            {imageUploadError && <p className="orders-error" role="alert">{imageUploadError}</p>}
-            {!loadingManagedProducts && !managedProductsError && managedProducts.length === 0 && (
-              <p className="orders-description">Todavía no hay productos en el catálogo.</p>
-            )}
-            {managedProducts.length > 0 && (
-              <div className="product-image-management-list">
-                {managedProducts.map((product) => (
-                  <article className="product-image-management-item" key={product.id}>
-                    <div className="product-image-management-info">
-                      <div className="product-image-management-thumbnail">
-                        <span>{(product.name || "P").trim().charAt(0).toUpperCase()}</span>
-                        {product.imageUrl && (
-                          <img src={product.imageUrl} alt="" onError={(event) => { event.currentTarget.hidden = true; }} />
-                        )}
-                      </div>
-                      <div className="product-image-management-name">
-                        <strong>{product.name}</strong>
-                        <small>{product.imageUrl ? "Imagen cargada" : "Sin imagen"}</small>
-                      </div>
-                    </div>
-                    <div className="product-image-change-controls">
-                      <label>
-                        <span>{imageFiles[product.id]?.name ?? "Seleccionar imagen"}</span>
-                        <input
-                          key={`${product.id}-${product.imageUrl ?? "empty"}`}
-                          type="file"
-                          accept={PRODUCT_IMAGE_TYPES}
-                          onChange={(event) => selectProductImage(
-                            product.id,
-                            event.target.files?.[0] ?? null,
-                            () => { event.target.value = ""; }
-                          )}
-                        />
-                      </label>
-                      <button
-                        className="clear-search-button"
-                        type="button"
-                        onClick={() => updateProductImage(product.id)}
-                        disabled={!imageFiles[product.id] || uploadingImageId === product.id}
-                      >
-                        {uploadingImageId === product.id ? "Subiendo…" : "Guardar imagen"}
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
           </div>
         </details>
       )}

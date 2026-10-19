@@ -29,6 +29,18 @@ public class SecurityConfig {
 
     @Bean
     @Order(2)
+    SecurityFilterChain publicAuthSecurity(HttpSecurity http) throws Exception {
+        return http
+                .securityMatcher("/api/auth/register", "/api/auth/login", "/api/auth/providers")
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
+                .build();
+    }
+
+    @Bean
+    @Order(3)
     SecurityFilterChain apiSecurity(HttpSecurity http, BearerTokenFilter bearerTokenFilter) throws Exception {
         return http
                 .securityMatcher("/api/**")
@@ -41,6 +53,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/auth/providers").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/products").hasAnyRole("EMPLOYEE", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/products/*/images").hasAnyRole("EMPLOYEE", "ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/products/*").hasAnyRole("EMPLOYEE", "ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/products/*/image").hasAnyRole("EMPLOYEE", "ADMIN")
                         .requestMatchers("/api/products/**").hasRole("ADMIN")
@@ -58,7 +71,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(3)
+    @Order(4)
     SecurityFilterChain denyOtherRequests(HttpSecurity http) throws Exception {
         return http
                 .authorizeHttpRequests(authorize -> authorize.anyRequest().denyAll())

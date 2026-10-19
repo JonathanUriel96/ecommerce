@@ -1,9 +1,24 @@
 import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import "./App.css";
 import "./Theme.css";
 import RoleDashboard from "./RoleDashboard.jsx";
 import { apiFetch } from "./api";
 import { PRODUCT_CATEGORIES, PRODUCT_CATEGORY_LABELS } from "./productCategories";
+import { clearSession, setCurrentUser, setSession } from "./features/auth/authSlice";
+import {
+  addCartItem,
+  changeCartItemQuantity,
+  clearCart,
+  removeCartItem,
+  replaceCart,
+} from "./features/cart/cartSlice";
+import {
+  setProducts,
+  setProductsError,
+  updateStockFromOrder,
+  upsertProduct,
+} from "./features/products/productsSlice";
 
 const formatoPrecio = new Intl.NumberFormat("es-MX", {
   style: "currency",
@@ -13,7 +28,32 @@ const formatoPrecio = new Intl.NumberFormat("es-MX", {
 const CART_STORAGE_KEY = "urban-shop-cart";
 const AUTH_STORAGE_KEY = "urban-shop-token";
 const THEME_STORAGE_KEY = "urban-shop-theme";
+const ADDRESS_BOOK_STORAGE_PREFIX = "urban-shop-addresses:";
 const HERO_BACKGROUNDS = ["#253a32", "#35464b", "#4b3d35", "#403a54"];
+const MEXICAN_STATES = [
+  "Aguascalientes", "Baja California", "Baja California Sur", "Campeche",
+  "Chiapas", "Chihuahua", "Ciudad de México", "Coahuila", "Colima",
+  "Durango", "Estado de México", "Guanajuato", "Guerrero", "Hidalgo",
+  "Jalisco", "Michoacán", "Morelos", "Nayarit", "Nuevo León", "Oaxaca",
+  "Puebla", "Querétaro", "Quintana Roo", "San Luis Potosí", "Sinaloa",
+  "Sonora", "Tabasco", "Tamaulipas", "Tlaxcala", "Veracruz", "Yucatán",
+  "Zacatecas",
+];
+const EMPTY_ADDRESS_FORM = {
+  firstName: "",
+  lastName: "",
+  company: "",
+  phone: "",
+  gender: "",
+  street: "",
+  exteriorNumber: "",
+  interiorNumber: "",
+  reference: "",
+  neighborhood: "",
+  postalCode: "",
+  city: "",
+  state: "",
+};
 const CATEGORY_HERO_COPY = {
   MOUSE: "Encuentra opciones precisas y cómodas para trabajar o jugar.",
   KEYBOARD: "Explora teclados para completar tu espacio de trabajo o juego.",
@@ -22,17 +62,154 @@ const CATEGORY_HERO_COPY = {
   OTHER: "Explora los productos disponibles en esta categoría.",
 };
 
+function formatDescriptionInline(text, keyPrefix) {
+  return text.split(/(\*\*[^*]+\*\*|__[^_]+__)/g).map((part, index) => {
+    const isBold = (part.startsWith("**") && part.endsWith("**"))
+      || (part.startsWith("__") && part.endsWith("__"));
+
+    return isBold
+      ? <strong key={`${keyPrefix}-${index}`}>{part.slice(2, -2)}</strong>
+      : part;
+  });
+}
+
+function renderProductDescription(description) {
+  const text = String(description ?? "").trim();
+  if (!text) return <p>Este producto aún no tiene una descripción.</p>;
+
+  const blocks = [];
+  let paragraphLines = [];
+  let listItems = [];
+
+  const flushParagraph = () => {
+    if (!paragraphLines.length) return;
+    const key = `description-paragraph-${blocks.length}`;
+    blocks.push(<p key={key}>{formatDescriptionInline(paragraphLines.join(" "), key)}</p>);
+    paragraphLines = [];
+  };
+
+  const flushList = () => {
+    if (!listItems.length) return;
+    const key = `description-list-${blocks.length}`;
+    blocks.push(
+      <ul className="product-description-list" key={key}>
+        {listItems.map((item, index) => (
+          <li key={`${key}-${index}`}>{formatDescriptionInline(item, `${key}-${index}`)}</li>
+        ))}
+      </ul>,
+    );
+    listItems = [];
+  };
+
+  text.replace(/\r\n?/g, "\n").split("\n").forEach((line) => {
+    const headingMatch = line.match(/^\s{0,3}(#{1,4})\s+(.+?)\s*$/);
+    const listMatch = line.match(/^\s*(?:[-*•])\s+(.+?)\s*$/);
+
+    if (!line.trim()) {
+      flushParagraph();
+      flushList();
+      return;
+    }
+
+    if (headingMatch) {
+      flushParagraph();
+      flushList();
+      const Heading = headingMatch[1].length <= 3 ? "h3" : "h4";
+      const key = `description-heading-${blocks.length}`;
+      blocks.push(<Heading key={key}>{formatDescriptionInline(headingMatch[2], key)}</Heading>);
+      return;
+    }
+
+    if (listMatch) {
+      flushParagraph();
+      listItems.push(listMatch[1]);
+      return;
+    }
+
+    flushList();
+    paragraphLines.push(line.trim());
+  });
+
+  flushParagraph();
+  flushList();
+  return blocks;
+}
+
+function getCatalogDescription(product) {
+  const shortDescription = String(product.shortDescription ?? "").trim();
+  if (shortDescription) return shortDescription;
+
+  // Para productos creados antes del campo breve, conserva el catálogo compacto.
+  const plainText = String(product.description ?? "")
+    .replace(/^\s*#{1,4}\s+/gm, "")
+    .replace(/^\s*[-*•]\s+/gm, "")
+    .replace(/\*\*|__/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!plainText) return "Sin descripción disponible.";
+  if (plainText.length <= 140) return plainText;
+  return `${plainText.slice(0, 137).replace(/\s+\S*$/, "").trimEnd()}…`;
+}
+
+function formatAddressForDisplay(address) {
+  const street = [
+    address.street,
+    address.exteriorNumber && `No. ${address.exteriorNumber}`,
+    address.interiorNumber && `Int. ${address.interiorNumber}`,
+  ].filter(Boolean).join(" ");
+  const location = [
+    address.neighborhood,
+    address.postalCode && `CP ${address.postalCode}`,
+    address.city,
+    address.state,
+  ].filter(Boolean).join(", ");
+
+  return [street, location, address.reference && `Referencia: ${address.reference}`]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function formatAddressForOrder(address) {
+  const recipient = `${address.firstName} ${address.lastName}`.trim();
+  const street = [
+    address.street,
+    address.exteriorNumber,
+    address.interiorNumber && `Int. ${address.interiorNumber}`,
+  ].filter(Boolean).join(" ");
+  return [
+    `Destinatario: ${recipient}`,
+    address.company && `Empresa: ${address.company}`,
+    `Tel: ${address.phone}`,
+    `${street}, ${address.neighborhood}, CP ${address.postalCode}, ${address.city}, ${address.state}`,
+    address.reference && `Ref: ${address.reference}`,
+  ].filter(Boolean).join(" | ").slice(0, 500);
+}
+
 function App({ initialAuthError = "" }) {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [shippingAddress, setShippingAddress] = useState("");
+  const productPageId = new URLSearchParams(window.location.search).get("productId");
+  const dispatch = useDispatch();
+  const { items: products, loading, error } = useSelector((state) => state.products);
+  const cart = useSelector((state) => state.cart);
+  const { token, currentUser } = useSelector((state) => state.auth);
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [addressBookLoadedFor, setAddressBookLoadedFor] = useState("");
+  const [isAddressEditorOpen, setIsAddressEditorOpen] = useState(false);
+  const [showAddressPicker, setShowAddressPicker] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState("");
+  const [addressForm, setAddressForm] = useState(EMPTY_ADDRESS_FORM);
   const [orderMessage, setOrderMessage] = useState("");
   const [orderMessageType, setOrderMessageType] = useState("");
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOrder, setSortOrder] = useState("featured");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [productPageProduct, setProductPageProduct] = useState(null);
+  const [selectedProductImage, setSelectedProductImage] = useState({ productId: null, url: "" });
+  const [productPageLoading, setProductPageLoading] = useState(Boolean(productPageId));
+  const [productPageError, setProductPageError] = useState("");
+  const [productPageCartMessage, setProductPageCartMessage] = useState("");
+  const [productPageQuantity, setProductPageQuantity] = useState(1);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const [isHeroPaused, setIsHeroPaused] = useState(false);
   const [theme, setTheme] = useState(() => {
@@ -43,8 +220,6 @@ function App({ initialAuthError = "" }) {
     }
   });
   const [themeTransition, setThemeTransition] = useState("");
-  const [token, setToken] = useState(() => window.sessionStorage.getItem(AUTH_STORAGE_KEY) ?? "");
-  const [currentUser, setCurrentUser] = useState(null);
   const [authMode, setAuthMode] = useState(() => initialAuthError ? "login" : null);
   const [authForm, setAuthForm] = useState({ name: "", email: "", identifier: "", password: "" });
   const [showAuthPassword, setShowAuthPassword] = useState(false);
@@ -52,21 +227,11 @@ function App({ initialAuthError = "" }) {
   const [authLoading, setAuthLoading] = useState(false);
   const [authProviders, setAuthProviders] = useState({ googleEnabled: false, googleAuthorizationUrl: "" });
   const [showOrderHistory, setShowOrderHistory] = useState(false);
-  const [cart, setCart] = useState(() => {
-    try {
-      const savedCart = window.localStorage.getItem(CART_STORAGE_KEY);
-
-      if (!savedCart) {
-        return [];
-      }
-
-      const parsedCart = JSON.parse(savedCart);
-      return Array.isArray(parsedCart) ? parsedCart : [];
-    } catch {
-      return [];
-    }
-  });
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const addressStorageKey = currentUser?.role === "CUSTOMER" && currentUser.email
+    ? `${ADDRESS_BOOK_STORAGE_PREFIX}${currentUser.email.trim().toLowerCase()}`
+    : "";
+  const selectedAddress = savedAddresses.find((address) => address.id === selectedAddressId) ?? null;
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartSubtotal = cart.reduce(
     (total, item) => total + Number(item.price) * item.quantity,
@@ -76,7 +241,7 @@ function App({ initialAuthError = "" }) {
     .filter((product) => {
       const matchesCategory = categoryFilter === "ALL" || (product.category ?? "OTHER") === categoryFilter;
       const categoryLabel = PRODUCT_CATEGORY_LABELS[product.category] ?? PRODUCT_CATEGORY_LABELS.OTHER;
-      const searchableText = `${product.name ?? ""} ${product.model ?? ""} ${product.description ?? ""} ${categoryLabel}`;
+      const searchableText = `${product.name ?? ""} ${product.model ?? ""} ${product.shortDescription ?? ""} ${product.description ?? ""} ${categoryLabel}`;
       return matchesCategory && searchableText
         .toLocaleLowerCase("es-MX")
         .includes(searchTerm.trim().toLocaleLowerCase("es-MX"));
@@ -112,11 +277,69 @@ function App({ initialAuthError = "" }) {
   const activeHeroCategory = heroCategories[heroSlideIndex] ?? null;
 
   useEffect(() => {
+    if (!addressStorageKey) {
+      setSavedAddresses([]);
+      setSelectedAddressId("");
+      setAddressBookLoadedFor("");
+      setShowAddressPicker(false);
+      return;
+    }
+
+    let addresses = [];
+    let storedSelectedAddressId = "";
+    try {
+      const storedAddressBook = JSON.parse(window.localStorage.getItem(addressStorageKey) ?? "{}");
+      addresses = Array.isArray(storedAddressBook)
+        ? storedAddressBook
+        : Array.isArray(storedAddressBook.addresses) ? storedAddressBook.addresses : [];
+      storedSelectedAddressId = storedAddressBook.selectedAddressId ?? "";
+    } catch {
+      addresses = [];
+    }
+
+    const initialSelection = addresses.some((address) => address.id === storedSelectedAddressId)
+      ? storedSelectedAddressId
+      : addresses[0]?.id ?? "";
+    setSavedAddresses(addresses);
+    setSelectedAddressId(initialSelection);
+    setAddressBookLoadedFor(addressStorageKey);
+    setShowAddressPicker(false);
+  }, [addressStorageKey]);
+
+  useEffect(() => {
+    if (!addressStorageKey || addressBookLoadedFor !== addressStorageKey) return;
+    try {
+      window.localStorage.setItem(addressStorageKey, JSON.stringify({
+        addresses: savedAddresses,
+        selectedAddressId,
+      }));
+    } catch {
+      // Las direcciones siguen disponibles durante esta sesión si el almacenamiento no está disponible.
+    }
+  }, [addressBookLoadedFor, addressStorageKey, savedAddresses, selectedAddressId]);
+
+  useEffect(() => {
+    if (!isAddressEditorOpen) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setIsAddressEditorOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [isAddressEditorOpen]);
+
+  useEffect(() => {
     try {
       window.localStorage.setItem(THEME_STORAGE_KEY, theme);
     } catch {
       // The selected theme still works for this visit if storage is unavailable.
     }
+  }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.dataset.siteTheme = theme;
+    return () => {
+      delete document.documentElement.dataset.siteTheme;
+    };
   }, [theme]);
 
   useEffect(() => {
@@ -141,49 +364,56 @@ function App({ initialAuthError = "" }) {
   const canAddMore = (product) =>
     cartQuantity(product.id) < Number(product.stock);
 
-  const addToCart = (product) => {
-    setCart((currentCart) => {
-      const itemInCart = currentCart.find((item) => item.id === product.id);
-      const currentQuantity = itemInCart?.quantity ?? 0;
-
-      if (currentQuantity >= Number(product.stock)) {
-        return currentCart;
-      }
-
-      if (!itemInCart) {
-        return [...currentCart, { ...product, quantity: 1 }];
-      }
-
-      return currentCart.map((item) =>
-        item.id === product.id
-          ? { ...item, quantity: item.quantity + 1 }
-          : item,
-      );
-    });
+  const addToCart = (product, quantityToAdd = 1) => {
+    dispatch(addCartItem({ product, quantity: quantityToAdd }));
   };
 
   const changeCartQuantity = (productId, amount) => {
-    setCart((currentCart) =>
-      currentCart.map((item) => {
-        if (item.id !== productId) {
-          return item;
-        }
-
-        const nextQuantity = item.quantity + amount;
-        const limitedQuantity = Math.min(
-          Number(item.stock),
-          Math.max(1, nextQuantity),
-        );
-
-        return { ...item, quantity: limitedQuantity };
-      }),
-    );
+    dispatch(changeCartItemQuantity({ productId, amount }));
   };
 
   const removeFromCart = (productId) => {
-    setCart((currentCart) =>
-      currentCart.filter((item) => item.id !== productId),
+    dispatch(removeCartItem(productId));
+  };
+
+  const startAddingAddress = () => {
+    const nameParts = String(currentUser?.name ?? "").trim().split(/\s+/).filter(Boolean);
+    setAddressForm({
+      ...EMPTY_ADDRESS_FORM,
+      firstName: nameParts[0] ?? "",
+      lastName: nameParts.slice(1).join(" "),
+    });
+    setEditingAddressId("");
+    setIsAddressEditorOpen(true);
+  };
+
+  const startEditingAddress = () => {
+    if (!selectedAddress) return;
+    setAddressForm({ ...EMPTY_ADDRESS_FORM, ...selectedAddress });
+    setEditingAddressId(selectedAddress.id);
+    setIsAddressEditorOpen(true);
+  };
+
+  const handleSaveAddress = (event) => {
+    event.preventDefault();
+    const normalizedAddress = Object.fromEntries(
+      Object.entries(addressForm).map(([field, value]) => [field, value.trim()]),
     );
+    const addressId = editingAddressId || window.crypto?.randomUUID?.() || String(Date.now());
+    const savedAddress = { ...normalizedAddress, id: addressId };
+
+    setSavedAddresses((addresses) => editingAddressId
+      ? addresses.map((address) => address.id === editingAddressId ? savedAddress : address)
+      : [...addresses, savedAddress]);
+    setSelectedAddressId(addressId);
+    setShowAddressPicker(false);
+    setIsAddressEditorOpen(false);
+    setEditingAddressId("");
+    setAddressForm(EMPTY_ADDRESS_FORM);
+  };
+
+  const updateAddressField = (field, value) => {
+    setAddressForm((currentForm) => ({ ...currentForm, [field]: value }));
   };
 
   const handleCheckout = async (event) => {
@@ -192,6 +422,12 @@ function App({ initialAuthError = "" }) {
       setOrderMessageType("error");
       setOrderMessage("Inicia sesión con una cuenta de cliente para confirmar el pedido.");
       setAuthMode("login");
+      return;
+    }
+    if (!selectedAddress) {
+      setOrderMessageType("error");
+      setOrderMessage("Agrega o selecciona una dirección de entrega para continuar.");
+      setIsAddressEditorOpen(true);
       return;
     }
     setOrderMessage("");
@@ -207,7 +443,7 @@ function App({ initialAuthError = "" }) {
         body: JSON.stringify({
           customerName: currentUser.name,
           customerEmail: currentUser.email,
-          shippingAddress,
+          shippingAddress: formatAddressForOrder(selectedAddress),
           items: cart.map((item) => ({
             productId: item.id,
             quantity: item.quantity,
@@ -225,28 +461,8 @@ function App({ initialAuthError = "" }) {
         );
       }
 
-      setProducts((currentProducts) =>
-        currentProducts.map((product) => {
-          const orderedItem = result.items?.find(
-            (item) => item.productId === product.id,
-          );
-
-          if (!orderedItem) {
-            return product;
-          }
-
-          return {
-            ...product,
-            stock: Math.max(
-              0,
-              Number(product.stock) - Number(orderedItem.quantity),
-            ),
-          };
-        }),
-      );
-
-      setCart([]);
-      setShippingAddress("");
+      dispatch(updateStockFromOrder(result.items ?? []));
+      dispatch(clearCart());
       setOrderMessageType("success");
       setOrderMessage(
         `Pedido #${result.id} creado. Total: ${formatoPrecio.format(Number(result.total))}`,
@@ -295,18 +511,46 @@ function App({ initialAuthError = "" }) {
           );
         }
 
-        setProducts(productList);
+        dispatch(setProducts(productList));
       } catch (err) {
-        setError(
+        dispatch(setProductsError(
           err instanceof Error ? err.message : "Ocurrió un error inesperado.",
-        );
-      } finally {
-        setLoading(false);
+        ));
       }
     }
 
     loadProducts();
   }, []);
+
+  useEffect(() => {
+    if (!productPageId) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    apiFetch(`/api/products/${encodeURIComponent(productPageId)}`)
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.detail || data.message || `No se pudo cargar el producto (HTTP ${response.status}).`);
+        }
+        return data;
+      })
+      .then((product) => {
+        if (!cancelled) setProductPageProduct(product);
+      })
+      .catch((loadError) => {
+        if (!cancelled) {
+          setProductPageError(loadError instanceof Error ? loadError.message : "No se pudo cargar el producto.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setProductPageLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [productPageId]);
 
   useEffect(() => {
     if (!token) {
@@ -322,13 +566,12 @@ function App({ initialAuthError = "" }) {
         return response.json();
       })
       .then((user) => {
-        if (!cancelled) setCurrentUser(user);
+        if (!cancelled) dispatch(setCurrentUser(user));
       })
       .catch(() => {
         if (cancelled) return;
         window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
-        setToken("");
-        setCurrentUser(null);
+        dispatch(clearSession());
       });
 
     return () => { cancelled = true; };
@@ -350,12 +593,14 @@ function App({ initialAuthError = "" }) {
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(result.detail || result.message || `No se pudo iniciar sesión (HTTP ${response.status}).`);
+        const fallbackMessage = registering
+          ? `No se pudo crear la cuenta (HTTP ${response.status}).`
+          : `No se pudo iniciar sesión (HTTP ${response.status}).`;
+        throw new Error(result.detail || result.message || fallbackMessage);
       }
 
       window.sessionStorage.setItem(AUTH_STORAGE_KEY, result.token);
-      setCurrentUser(result.user);
-      setToken(result.token);
+      dispatch(setSession({ token: result.token, user: result.user }));
       setAuthMode(null);
       setAuthForm({ name: "", email: "", identifier: "", password: "" });
       setShowAuthPassword(false);
@@ -376,8 +621,7 @@ function App({ initialAuthError = "" }) {
       }
     } finally {
       window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
-      setToken("");
-      setCurrentUser(null);
+      dispatch(clearSession());
       setShowOrderHistory(false);
     }
   };
@@ -392,6 +636,238 @@ function App({ initialAuthError = "" }) {
       );
     }
   }, [cart]);
+
+  useEffect(() => {
+    const syncCartFromOtherTab = (event) => {
+      if (event.key !== CART_STORAGE_KEY) return;
+      try {
+        const savedCart = event.newValue ? JSON.parse(event.newValue) : [];
+        dispatch(replaceCart(Array.isArray(savedCart) ? savedCart : []));
+      } catch {
+        dispatch(clearCart());
+      }
+    };
+
+    window.addEventListener("storage", syncCartFromOtherTab);
+    return () => window.removeEventListener("storage", syncCartFromOtherTab);
+  }, []);
+
+  if (productPageId) {
+    const product = productPageProduct;
+    const productImageUrls = product
+      ? (Array.isArray(product.imageUrls) ? [...product.imageUrls] : []).filter((url) => typeof url === "string" && url.trim())
+      : [];
+    if (product?.imageUrl && !productImageUrls.includes(product.imageUrl)) {
+      productImageUrls.unshift(product.imageUrl);
+    }
+    const activeProductImage = product && selectedProductImage.productId === product.id
+      && productImageUrls.includes(selectedProductImage.url)
+      ? selectedProductImage.url
+      : productImageUrls[0];
+    const remainingStock = product
+      ? Math.max(0, Number(product.stock) - cartQuantity(product.id))
+      : 0;
+    const selectedQuantity = Math.min(
+      productPageQuantity,
+      Math.max(1, remainingStock),
+    );
+    return (
+      <div className="app-shell product-page-shell" data-theme={theme}>
+        {themeTransition && (
+          <div
+            className={`theme-transition-effect theme-transition-effect--${themeTransition}`}
+            aria-hidden="true"
+            onAnimationEnd={() => setThemeTransition("")}
+          />
+        )}
+        <header className="topbar product-page-topbar">
+          <a className="brand" href="/">
+            <span className="brand-mark">U</span>
+            <span>URBAN<span className="brand-accent">SHOP</span></span>
+          </a>
+          <div className="product-page-header-actions">
+            <button
+              className={`theme-toggle${theme === "blue" ? " is-blue" : ""}`}
+              type="button"
+              onClick={() => {
+                const nextTheme = theme === "blue" ? "light" : "blue";
+                const prefersReducedMotion = window.matchMedia?.(
+                  "(prefers-reduced-motion: reduce)",
+                ).matches ?? false;
+                setThemeTransition(prefersReducedMotion ? "" : nextTheme);
+                setTheme(nextTheme);
+              }}
+              role="switch"
+              aria-checked={theme === "blue"}
+              aria-label="Modo azul"
+              title={theme === "blue" ? "Modo azul activado. Cambiar al tema claro" : "Modo azul desactivado. Activar tema azul"}
+            >
+              <span className="theme-switch-track" aria-hidden="true">
+                <span className="theme-switch-thumb">
+                  <span className="theme-toggle-icon">{theme === "blue" ? "☾" : "☼"}</span>
+                </span>
+              </span>
+            </button>
+            <a className="cart-toggle product-page-back-link" href="/#catalog">Volver al catálogo</a>
+          </div>
+        </header>
+
+        <main className="product-page-main">
+          <nav className="product-page-breadcrumb" aria-label="Ruta de navegación">
+            <a href="/#catalog">Catálogo</a>
+            <span aria-hidden="true">›</span>
+            <span aria-current="page">{product?.name ?? "Detalle del producto"}</span>
+          </nav>
+
+          {productPageLoading && <p className="message">Cargando detalles del producto…</p>}
+          {productPageError && (
+            <div className="message error-message" role="alert">
+              <strong>No pudimos cargar este producto.</strong>
+              <p>{productPageError}</p>
+              <a className="product-details-continue" href="/#catalog">Volver al catálogo</a>
+            </div>
+          )}
+
+          {!productPageLoading && !productPageError && product && (
+            <article className={`product-details-modal product-page-layout product-card--${(product.category ?? "OTHER").toLowerCase()}`}>
+              <div className="product-page-overview">
+                <div className="product-page-gallery-column">
+                  <div className="product-details-gallery">
+                    <div className="product-details-image-stage">
+                      <span className="product-initial" aria-hidden="true">
+                        {(product.name || "P").trim().charAt(0).toUpperCase()}
+                      </span>
+                      {activeProductImage ? (
+                        <img
+                          className="product-details-image"
+                          src={activeProductImage}
+                          alt={`${product.name}, imagen del producto`}
+                          onError={(event) => { event.currentTarget.hidden = true; }}
+                        />
+                      ) : (
+                        <span className="product-details-no-image">Imagen no disponible</span>
+                      )}
+                      <span className="product-number">PRODUCTO #{product.id}</span>
+                    </div>
+                    {productImageUrls.length > 1 && (
+                      <div className="product-details-thumbnails" role="group" aria-label="Imágenes del producto">
+                        {productImageUrls.map((imageUrl, index) => (
+                          <button
+                            className={`product-details-thumbnail${activeProductImage === imageUrl ? " is-selected" : ""}`}
+                            type="button"
+                            key={`${product.id}-${imageUrl}`}
+                            onClick={() => setSelectedProductImage({ productId: product.id, url: imageUrl })}
+                            aria-label={`Mostrar imagen ${index + 1} de ${productImageUrls.length}`}
+                            aria-pressed={activeProductImage === imageUrl}
+                          >
+                            <img src={imageUrl} alt="" loading="lazy" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <section className="product-page-more-info" aria-labelledby="product-more-info-title">
+                    <h2 id="product-more-info-title">Más información</h2>
+                    <div className="product-page-more-info-grid">
+                      <div>
+                        <span>Modelo</span>
+                        <strong>{product.model?.trim() || "No especificado"}</strong>
+                      </div>
+                      <div>
+                        <span>Categoría</span>
+                        <strong>{PRODUCT_CATEGORY_LABELS[product.category] ?? PRODUCT_CATEGORY_LABELS.OTHER}</strong>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <section className="product-details-content" aria-label="Información de compra">
+                  <p className="eyebrow">DETALLES DEL PRODUCTO</p>
+                  <h1 className="product-page-title">{product.name}</h1>
+                  <p className="product-page-sku"><strong>Código del producto:</strong> #{product.id}</p>
+                  <div className="product-page-price-line">
+                    <span>Precio</span>
+                    <strong className="product-details-price">{formatoPrecio.format(Number(product.price))}</strong>
+                  </div>
+
+                  <div className="product-page-buy-row">
+                    <div className="product-page-availability">
+                      <p className={`product-details-stock${remainingStock > 0 ? " is-available" : " is-unavailable"}`}>
+                        <span className="stock-dot" />
+                        {remainingStock > 0 ? `${remainingStock} pzas. disponibles` : "Producto agotado"}
+                      </p>
+                      <div className="product-quantity-picker" aria-label="Cantidad del producto">
+                        <button
+                          type="button"
+                          aria-label="Disminuir cantidad"
+                          disabled={selectedQuantity <= 1}
+                          onClick={() => setProductPageQuantity(Math.max(1, selectedQuantity - 1))}
+                        >−</button>
+                        <output aria-live="polite">{selectedQuantity}</output>
+                        <button
+                          type="button"
+                          aria-label="Aumentar cantidad"
+                          disabled={selectedQuantity >= remainingStock}
+                          onClick={() => setProductPageQuantity(Math.min(remainingStock, selectedQuantity + 1))}
+                        >+</button>
+                      </div>
+                    </div>
+                    <button
+                      className="add-button product-page-add-button"
+                      type="button"
+                      onClick={() => {
+                        addToCart(product, selectedQuantity);
+                        const verb = selectedQuantity === 1 ? "se agregó" : "se agregaron";
+                        const unit = selectedQuantity === 1 ? "unidad" : "unidades";
+                        setProductPageCartMessage(`${selectedQuantity} ${unit} de “${product.name}” ${verb} al carrito.`);
+                      }}
+                      disabled={remainingStock === 0}
+                    >
+                      {remainingStock === 0 ? "Agotado" : "Agregar al carrito"}
+                    </button>
+                  </div>
+
+                  {productPageCartMessage && <p className="product-page-cart-message" role="status">{productPageCartMessage}</p>}
+
+                  <section className="product-page-info-card product-page-essentials product-details-specifications" aria-labelledby="product-specifications-title">
+                    <h2 id="product-specifications-title">Especificaciones esenciales</h2>
+                    <dl>
+                      <div>
+                        <dt>Categoría</dt>
+                        <dd>{PRODUCT_CATEGORY_LABELS[product.category] ?? PRODUCT_CATEGORY_LABELS.OTHER}</dd>
+                      </div>
+                      <div>
+                        <dt>Modelo</dt>
+                        <dd>{product.model?.trim() || "No especificado"}</dd>
+                      </div>
+                      <div>
+                        <dt>Disponibilidad</dt>
+                        <dd>{Number(product.stock) > 0 ? `${product.stock} unidades` : "Agotado"}</dd>
+                      </div>
+                      <div>
+                        <dt>Código del producto</dt>
+                        <dd>#{product.id}</dd>
+                      </div>
+                    </dl>
+                  </section>
+                </section>
+              </div>
+
+              <section className="product-page-information" id="product-information">
+                <section className="product-page-info-card product-details-description" aria-labelledby="product-description-title">
+                  <h2 id="product-description-title">Detalles del producto</h2>
+                  <div className="product-description-content">
+                    {renderProductDescription(product.description)}
+                  </div>
+                </section>
+              </section>
+            </article>
+          )}
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell" data-theme={theme}>
@@ -519,7 +995,7 @@ function App({ initialAuthError = "" }) {
                   </button>
                 </span>
               </label>
-              {authMode === "register" && <small>Usa al menos 10 caracteres. Las cuentas de empleado y administrador las crea un administrador.</small>}
+              {authMode === "register" && <small>Usa al menos 10 caracteres.</small>}
               {authError && <p className="auth-error" role="alert">{authError}</p>}
               <button className="checkout-button" type="submit" disabled={authLoading}>
                 {authLoading ? "Procesando..." : authMode === "register" ? "Crear cuenta" : "Entrar"}
@@ -651,10 +1127,65 @@ function App({ initialAuthError = "" }) {
                   {currentUser?.role === "CUSTOMER" ? (
                     <>
                       <p className="checkout-account">Pedido a nombre de <strong>{currentUser.name}</strong> ({currentUser.email})</p>
-                      <label>Dirección de entrega
-                        <textarea value={shippingAddress} onChange={(event) => setShippingAddress(event.target.value)} autoComplete="street-address" maxLength={500} rows={3} required />
-                      </label>
-                      <button className="checkout-button" type="submit" disabled={isSubmittingOrder}>
+                      {selectedAddress ? (
+                        <>
+                          <div className="delivery-address-summary">
+                            <div className="delivery-address-details">
+                              <span>Destinatario</span>
+                              <strong>{selectedAddress.firstName} {selectedAddress.lastName}</strong>
+                              <span>Dirección</span>
+                              <strong>{formatAddressForDisplay(selectedAddress)}</strong>
+                              <span>Teléfono/celular</span>
+                              <strong>{selectedAddress.phone}</strong>
+                            </div>
+                            <div className="delivery-address-actions">
+                              <button className="delivery-address-action" type="button" onClick={startEditingAddress}>
+                                <span aria-hidden="true">✎</span> Editar dirección
+                              </button>
+                              {savedAddresses.length > 1 && (
+                                <button
+                                  className="delivery-address-action"
+                                  type="button"
+                                  onClick={() => setShowAddressPicker((showing) => !showing)}
+                                  aria-expanded={showAddressPicker}
+                                >
+                                  <span aria-hidden="true">☷</span> Seleccionar otra
+                                </button>
+                              )}
+                              <button className="delivery-address-action" type="button" onClick={startAddingAddress}>
+                                <span aria-hidden="true">＋</span> Agregar datos
+                              </button>
+                            </div>
+                          </div>
+                          {showAddressPicker && (
+                            <div className="delivery-address-picker" aria-label="Direcciones guardadas">
+                              {savedAddresses.map((address) => (
+                                <button
+                                  className={`delivery-address-option${address.id === selectedAddressId ? " is-selected" : ""}`}
+                                  type="button"
+                                  key={address.id}
+                                  onClick={() => {
+                                    setSelectedAddressId(address.id);
+                                    setShowAddressPicker(false);
+                                  }}
+                                  aria-pressed={address.id === selectedAddressId}
+                                >
+                                  <strong>{address.firstName} {address.lastName}</strong>
+                                  <span>{formatAddressForDisplay(address)}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="delivery-address-empty">
+                          <p>Aún no has agregado una dirección de entrega.</p>
+                          <button className="delivery-address-action delivery-address-add" type="button" onClick={startAddingAddress}>
+                            <span aria-hidden="true">＋</span> Agregar datos
+                          </button>
+                        </div>
+                      )}
+                      <button className="checkout-button" type="submit" disabled={isSubmittingOrder || !selectedAddress}>
                         {isSubmittingOrder ? "Procesando pedido..." : "Confirmar pedido"}
                       </button>
                     </>
@@ -668,6 +1199,88 @@ function App({ initialAuthError = "" }) {
               </>
             )}
           </section>
+          {isAddressEditorOpen && currentUser?.role === "CUSTOMER" && (
+            <div className="address-modal-overlay">
+              <button
+                className="address-modal-backdrop"
+                type="button"
+                onClick={() => setIsAddressEditorOpen(false)}
+                aria-label="Cerrar ventana de dirección"
+              />
+              <section className="address-dialog" role="dialog" aria-modal="true" aria-labelledby="address-dialog-title">
+                <form onSubmit={handleSaveAddress}>
+                  <header className="address-dialog-header">
+                    <h2 id="address-dialog-title">{editingAddressId ? "Editar dirección" : "Agregar dirección"}</h2>
+                    <button type="button" onClick={() => setIsAddressEditorOpen(false)} aria-label="Cerrar">×</button>
+                  </header>
+                  <div className="address-form-grid">
+                    <label className="address-field address-field--first-name">*Nombre(s) del destinatario
+                      <input autoFocus required maxLength={40} autoComplete="given-name" value={addressForm.firstName} onChange={(event) => updateAddressField("firstName", event.target.value)} />
+                    </label>
+                    <label className="address-field address-field--last-name">*Apellido(s) del destinatario
+                      <input required maxLength={40} autoComplete="family-name" value={addressForm.lastName} onChange={(event) => updateAddressField("lastName", event.target.value)} />
+                    </label>
+                    <label className="address-field address-field--company">Empresa destino
+                      <input maxLength={40} autoComplete="organization" value={addressForm.company} onChange={(event) => updateAddressField("company", event.target.value)} />
+                    </label>
+                    <label className="address-field address-field--phone">*Teléfono/Celular
+                      <input required type="tel" minLength={7} maxLength={15} autoComplete="tel" value={addressForm.phone} onChange={(event) => updateAddressField("phone", event.target.value)} />
+                    </label>
+                    <fieldset className="address-field address-field--gender">
+                      <legend>Género (opcional)</legend>
+                      <div className="address-gender-options">
+                        {[["H", "Hombre"], ["M", "Mujer"]].map(([shortLabel, value]) => (
+                          <button
+                            className={addressForm.gender === value ? "is-selected" : ""}
+                            type="button"
+                            key={value}
+                            onClick={() => updateAddressField("gender", addressForm.gender === value ? "" : value)}
+                            aria-pressed={addressForm.gender === value}
+                            aria-label={value}
+                          >
+                            {shortLabel}
+                          </button>
+                        ))}
+                      </div>
+                    </fieldset>
+                    <label className="address-field address-field--street">*Calle
+                      <input required maxLength={70} autoComplete="address-line1" value={addressForm.street} onChange={(event) => updateAddressField("street", event.target.value)} />
+                    </label>
+                    <label className="address-field address-field--exterior">*No. Ext.
+                      <input required maxLength={8} value={addressForm.exteriorNumber} onChange={(event) => updateAddressField("exteriorNumber", event.target.value)} />
+                    </label>
+                    <label className="address-field address-field--interior">No. Int.
+                      <input maxLength={8} value={addressForm.interiorNumber} onChange={(event) => updateAddressField("interiorNumber", event.target.value)} />
+                    </label>
+                    <label className="address-field address-field--reference">Referencia
+                      <input maxLength={25} value={addressForm.reference} onChange={(event) => updateAddressField("reference", event.target.value)} />
+                      <small>El servicio de paquetería limita la referencia a 25 caracteres.</small>
+                    </label>
+                    <label className="address-field address-field--neighborhood">*Colonia
+                      <input required maxLength={60} autoComplete="address-level3" value={addressForm.neighborhood} onChange={(event) => updateAddressField("neighborhood", event.target.value)} />
+                    </label>
+                    <label className="address-field address-field--postal-code">*Código Postal
+                      <input required inputMode="numeric" pattern="[0-9]{5}" maxLength={5} autoComplete="postal-code" value={addressForm.postalCode} onChange={(event) => updateAddressField("postalCode", event.target.value.replace(/\D/g, ""))} />
+                    </label>
+                    <label className="address-field address-field--city">*Ciudad
+                      <input required maxLength={40} autoComplete="address-level2" value={addressForm.city} onChange={(event) => updateAddressField("city", event.target.value)} />
+                    </label>
+                    <label className="address-field address-field--state">*Estado
+                      <select required autoComplete="address-level1" value={addressForm.state} onChange={(event) => updateAddressField("state", event.target.value)}>
+                        <option value="" disabled>Selecciona tu estado</option>
+                        {MEXICAN_STATES.map((state) => <option value={state} key={state}>{state}</option>)}
+                      </select>
+                    </label>
+                  </div>
+                  <p className="address-required-note">*Campos requeridos</p>
+                  <footer className="address-dialog-actions">
+                    <button className="address-dialog-back" type="button" onClick={() => setIsAddressEditorOpen(false)}>Regresar</button>
+                    <button className="address-dialog-save" type="submit">Guardar</button>
+                  </footer>
+                </form>
+              </section>
+            </div>
+          )}
         </div>
       )}
 
@@ -851,8 +1464,12 @@ function App({ initialAuthError = "" }) {
             <div className="product-grid">
               {filteredProducts.map((product) => (
                 <article className={`product-card product-card--${(product.category ?? "OTHER").toLowerCase()}`} id={`product-${product.id}`} key={product.id}>
-                  <div className="product-art" aria-hidden="true">
-                    <span className="product-initial">
+                  <a
+                    className="product-art product-art-link"
+                    href={`/?productId=${encodeURIComponent(product.id)}`}
+                    aria-label={`Ver detalles de ${product.name}`}
+                  >
+                    <span className="product-initial" aria-hidden="true">
                       {(product.name || "P").trim().charAt(0).toUpperCase()}
                     </span>
                     {product.imageUrl && (
@@ -868,7 +1485,7 @@ function App({ initialAuthError = "" }) {
                     <span className="product-number">
                       PRODUCTO #{product.id}
                     </span>
-                  </div>
+                  </a>
 
                   <div className="product-info">
                     <span className="product-category">
@@ -881,12 +1498,19 @@ function App({ initialAuthError = "" }) {
                         : "Agotado"}
                     </div>
 
-                    <h3>{product.name}</h3>
+                    <h3>
+                      <a
+                        className="product-title-link"
+                        href={`/?productId=${encodeURIComponent(product.id)}`}
+                      >
+                        {product.name}
+                      </a>
+                    </h3>
                     {product.model?.trim() && (
                       <p className="product-model">Modelo: {product.model}</p>
                     )}
                     <p className="description">
-                      {product.description || "Sin descripción disponible."}
+                      {getCatalogDescription(product)}
                     </p>
 
                     <div className="price-row">
@@ -895,18 +1519,26 @@ function App({ initialAuthError = "" }) {
                         {formatoPrecio.format(Number(product.price))}
                       </strong>
                     </div>
-                    <button
-                      className="add-button"
-                      type="button"
-                      onClick={() => addToCart(product)}
-                      disabled={!canAddMore(product)}
-                    >
-                      {Number(product.stock) === 0
-                        ? "Agotado"
-                        : canAddMore(product)
-                          ? "Agregar al carrito"
-                          : "Stock máximo alcanzado"}
-                    </button>
+                    <div className="product-card-actions">
+                      <a
+                        className="product-details-trigger"
+                        href={`/?productId=${encodeURIComponent(product.id)}`}
+                      >
+                        Ver más detalles
+                      </a>
+                      <button
+                        className="add-button"
+                        type="button"
+                        onClick={() => addToCart(product)}
+                        disabled={!canAddMore(product)}
+                      >
+                        {Number(product.stock) === 0
+                          ? "Agotado"
+                          : canAddMore(product)
+                            ? "Agregar al carrito"
+                            : "Stock máximo alcanzado"}
+                      </button>
+                    </div>
                   </div>
                 </article>
               ))}
@@ -933,11 +1565,7 @@ function App({ initialAuthError = "" }) {
               user={currentUser}
               token={token}
               onClose={() => setShowOrderHistory(false)}
-              onProductChanged={(product) => setProducts((currentProducts) => (
-                currentProducts.some((currentProduct) => currentProduct.id === product.id)
-                  ? currentProducts.map((currentProduct) => currentProduct.id === product.id ? product : currentProduct)
-                  : [...currentProducts, product]
-              ))}
+              onProductChanged={(product) => dispatch(upsertProduct(product))}
             />
           </section>
         </div>

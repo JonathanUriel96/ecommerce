@@ -2,6 +2,8 @@ package com.portafolio.E_Commerce.E_Commerce.Product;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "products")
@@ -26,6 +28,15 @@ public class Product {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "short_description", length = 280)
+    private String shortDescription;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "product_gallery_images", joinColumns = @JoinColumn(name = "product_id"))
+    @OrderColumn(name = "image_order")
+    @Column(name = "image_url", nullable = false, length = 2048)
+    private List<String> additionalImageUrls = new ArrayList<>();
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
@@ -99,6 +110,37 @@ public class Product {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getShortDescription() {
+        return shortDescription;
+    }
+
+    public void setShortDescription(String shortDescription) {
+        this.shortDescription = shortDescription;
+    }
+
+    public List<String> getImageUrls() {
+        List<String> imageUrls = new ArrayList<>();
+        if (imageUrl != null && !imageUrl.isBlank()) {
+            imageUrls.add(imageUrl);
+        }
+        for (String additionalImageUrl : additionalImageUrls) {
+            if (additionalImageUrl != null && !additionalImageUrl.isBlank() && !imageUrls.contains(additionalImageUrl)) {
+                imageUrls.add(additionalImageUrl);
+            }
+        }
+        return imageUrls;
+    }
+
+    public List<String> getAdditionalImageUrls() {
+        return additionalImageUrls;
+    }
+
+    public void addAdditionalImageUrl(String imageUrl) {
+        if (imageUrl != null && !imageUrl.isBlank() && !getImageUrls().contains(imageUrl)) {
+            additionalImageUrls.add(imageUrl);
+        }
     }
 
     public BigDecimal getPrice() {

@@ -1,7 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { Provider } from 'react-redux'
 import './index.css'
 import App from './App.jsx'
+import { store } from './store.js'
+import { setToken } from './features/auth/authSlice.js'
 
 const oauthParams = new URLSearchParams(window.location.hash.slice(1))
 const oauthToken = oauthParams.get('oauth_token')
@@ -12,6 +15,7 @@ if (oauthToken || oauthError) {
   window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
   if (oauthToken) {
     window.sessionStorage.setItem('urban-shop-token', oauthToken)
+    store.dispatch(setToken(oauthToken))
   } else if (oauthError === 'google_customer_only') {
     initialAuthError = 'El acceso con Google está disponible para clientes. El personal debe iniciar sesión con su cuenta de trabajo.'
   } else {
@@ -21,6 +25,8 @@ if (oauthToken || oauthError) {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App initialAuthError={initialAuthError} />
+    <Provider store={store}>
+      <App initialAuthError={initialAuthError} />
+    </Provider>
   </StrictMode>,
 )

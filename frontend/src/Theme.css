@@ -131,6 +131,13 @@
   background: #0a1726;
 }
 
+html[data-site-theme="blue"],
+html[data-site-theme="blue"] body,
+html[data-site-theme="blue"] #root {
+  color-scheme: dark;
+  background-color: #0a1726;
+}
+
 .app-shell[data-theme="blue"] .topbar {
   background: #101f30;
   border-bottom-color: #243d55;
@@ -208,12 +215,21 @@
 .app-shell[data-theme="blue"] .cart-toggle:hover,
 .app-shell[data-theme="blue"] .theme-toggle:hover,
 .app-shell[data-theme="blue"] .clear-search-button:hover,
+.app-shell[data-theme="blue"] .product-details-trigger:hover,
+.app-shell[data-theme="blue"] .product-details-continue:hover,
 .app-shell[data-theme="blue"] .orders-close-button:hover,
 .app-shell[data-theme="blue"] .quantity-button:hover:not(:disabled),
 .app-shell[data-theme="blue"] .password-visibility-toggle:hover {
   color: #fff;
   background: #1b4668;
   border-color: #1cb7fa;
+}
+
+.app-shell[data-theme="blue"] .product-details-trigger,
+.app-shell[data-theme="blue"] .product-details-continue {
+  color: #bceaff;
+  background: #142b40;
+  border-color: #31536f;
 }
 
 .app-shell[data-theme="blue"] .theme-toggle {
@@ -284,6 +300,7 @@
 
 .app-shell[data-theme="blue"] .product-card,
 .app-shell[data-theme="blue"] .product-edit-card,
+.app-shell[data-theme="blue"] .product-details-modal,
 .app-shell[data-theme="blue"] .message,
 .app-shell[data-theme="blue"] .cart-panel,
 .app-shell[data-theme="blue"] .orders-panel,
@@ -320,6 +337,148 @@
   background: linear-gradient(135deg, #25466a, #177bac);
 }
 
+.app-shell[data-theme="blue"] .product-details-gallery {
+  background: #0c1f32;
+}
+
+.app-shell[data-theme="blue"] .product-page-gallery-column {
+  background: #0c1f32;
+}
+
+.app-shell[data-theme="blue"] .product-page-layout .product-details-content {
+  border-color: #29445e;
+}
+
+.app-shell[data-theme="blue"] .product-page-more-info h2 {
+  color: #edf6ff;
+}
+
+.app-shell[data-theme="blue"] .product-page-more-info-grid > div {
+  background: #11253a;
+  border-color: #29445e;
+}
+
+.app-shell[data-theme="blue"] .product-page-more-info-grid span,
+.app-shell[data-theme="blue"] .product-page-price-line > span {
+  color: #a9bfd3;
+}
+
+.app-shell[data-theme="blue"] .product-page-more-info-grid strong {
+  color: #edf6ff;
+}
+
+.app-shell[data-theme="blue"] .product-page-price-line,
+.app-shell[data-theme="blue"] .product-page-buy-row {
+  border-color: #29445e;
+}
+
+.app-shell[data-theme="blue"] .product-quantity-picker {
+  color: #28c4ff;
+  background: #142b40;
+  border-color: #31536f;
+}
+
+.app-shell[data-theme="blue"] .product-quantity-picker button + output,
+.app-shell[data-theme="blue"] .product-quantity-picker output + button {
+  border-color: #31536f;
+}
+
+.app-shell[data-theme="blue"] .product-details-image-stage {
+  background: linear-gradient(135deg, #16466b, #087fae);
+}
+
+.app-shell[data-theme="blue"] .product-details-modal.product-card--keyboard .product-details-image-stage {
+  background: linear-gradient(135deg, #17476e, #1268a1);
+}
+
+.app-shell[data-theme="blue"] .product-details-modal.product-card--headphones .product-details-image-stage {
+  background: linear-gradient(135deg, #253e70, #167bb3);
+}
+
+.app-shell[data-theme="blue"] .product-details-modal.product-card--monitor .product-details-image-stage {
+  background: linear-gradient(135deg, #164a68, #078bb7);
+}
+
+.app-shell[data-theme="blue"] .product-details-modal.product-card--other .product-details-image-stage {
+  background: linear-gradient(135deg, #25466a, #177bac);
+}
+
+.app-shell[data-theme="blue"] .product-details-heading h2,
+.app-shell[data-theme="blue"] .product-page-title,
+.app-shell[data-theme="blue"] .product-details-price,
+.app-shell[data-theme="blue"] .product-details-description h2,
+.app-shell[data-theme="blue"] .product-details-description h3,
+.app-shell[data-theme="blue"] .product-description-content h3,
+.app-shell[data-theme="blue"] .product-description-content h4,
+.app-shell[data-theme="blue"] .product-details-specifications h2,
+.app-shell[data-theme="blue"] .product-details-specifications h3,
+.app-shell[data-theme="blue"] .product-details-specifications dd {
+  color: #edf6ff;
+}
+
+.app-shell[data-theme="blue"] .product-details-model,
+.app-shell[data-theme="blue"] .product-details-stock,
+.app-shell[data-theme="blue"] .product-details-description p,
+.app-shell[data-theme="blue"] .product-details-specifications dt,
+.app-shell[data-theme="blue"] .product-page-breadcrumb {
+  color: #a9bfd3;
+}
+
+.app-shell[data-theme="blue"] .product-page-sku {
+  color: #a9bfd3;
+}
+
+.app-shell[data-theme="blue"] .product-page-sku strong {
+  color: #e2f2ff;
+}
+
+.app-shell[data-theme="blue"] .product-page-info-card {
+  background: #0d2033;
+  border-color: #29445e;
+}
+
+.app-shell[data-theme="blue"] .product-page-info-card h2,
+.app-shell[data-theme="blue"] .product-page-info-card h3 {
+  color: #edf6ff;
+}
+
+.app-shell[data-theme="blue"] .product-description-help {
+  color: #a9bfd3;
+}
+
+.app-shell[data-theme="blue"] .product-description-content p,
+.app-shell[data-theme="blue"] .product-description-content ul {
+  color: #a9bfd3;
+}
+
+.app-shell[data-theme="blue"] .product-page-breadcrumb a {
+  color: #65d2ff;
+}
+
+.app-shell[data-theme="blue"] .product-page-cart-message {
+  color: #a9f0dc;
+}
+
+.app-shell[data-theme="blue"] .product-details-description,
+.app-shell[data-theme="blue"] .product-details-specifications,
+.app-shell[data-theme="blue"] .product-details-specifications dl > div {
+  border-color: #29445e;
+}
+
+.app-shell[data-theme="blue"] .product-details-stock.is-available .stock-dot {
+  background: #35d39a;
+}
+
+.app-shell[data-theme="blue"] .product-details-stock.is-unavailable .stock-dot {
+  background: #ff786f;
+}
+
+.app-shell[data-theme="blue"] .product-details-close {
+  color: #bceaff;
+  background: #142b40;
+  border-color: #31536f;
+}
+
 .app-shell[data-theme="blue"] .product-number {
   color: #073253;
   background: rgb(227 246 255 / 92%);
@@ -348,6 +507,16 @@
 .app-shell[data-theme="blue"] .add-button:hover:not(:disabled),
 .app-shell[data-theme="blue"] .checkout-button:hover:not(:disabled) {
   background: #43c5ff;
+}
+
+.app-shell[data-theme="blue"] .product-page-add-button {
+  color: #182b35;
+  background: #ff970b;
+}
+
+.app-shell[data-theme="blue"] .product-page-add-button:hover:not(:disabled) {
+  color: #182b35;
+  background: #ffad2d;
 }
 
 .app-shell[data-theme="blue"] .add-button:disabled,
@@ -410,6 +579,10 @@
 .app-shell[data-theme="blue"] .cart-overlay,
 .app-shell[data-theme="blue"] .orders-overlay,
 .app-shell[data-theme="blue"] .auth-overlay {
+  background: rgb(1 10 20 / 76%);
+}
+
+.app-shell[data-theme="blue"] .product-details-backdrop {
   background: rgb(1 10 20 / 76%);
 }
 

@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
@@ -56,6 +58,16 @@ public class ProductController {
             @PathVariable("id") Long id,
             @RequestPart("image") MultipartFile image) {
         return productService.updateImage(id, image)
+                .map(ProductResponse::from)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProductResponse> addProductImages(
+            @PathVariable("id") Long id,
+            @RequestPart("images") List<MultipartFile> images) {
+        return productService.addImages(id, images)
                 .map(ProductResponse::from)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
