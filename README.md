@@ -1,8 +1,19 @@
-#### **E-Commerce Platform**
-A modern, scalable Full-Stack e-commerce web application engineered for high-performance product cataloging and smooth customer transactions.
+🚀 Featured Project — UrbanShop E-Commerce
 
-- **Frontend & State Management:** Built with React, Vite, and JavaScript, focusing on an optimized and seamless user experience designed in Figma. State architecture is managed efficiently to handle user carts and sessions smoothly.
-- **Backend Architecture:** Powered by a structured **Java & Spring Boot** core compiled with **Maven**, using a standard layered package structure for high maintainability and solid separation of concerns.
-- **Media & Asset Management:** Integrated with **Cloudinary API** to deliver optimized, fast-loading, and responsive images for the e-commerce product catalog.
-- **Database Layer:** Managed through a decoupled and robust **MySQL** relational database layer, using dynamic configuration handling.
-- **Deployment Strategy:** Full continuous deployment infrastructure with the cloud backend environment securely hosted on **Railway**, and the web interface served through **Firebase Hosting**.
+A full-stack e-commerce web application built with a React frontend and a Java/Spring Boot REST API. The project includes a product storefront, role-based workflows, shopping cart, customer accounts, order management, and product-image handling.
+
+Frontend: React, Vite, Redux Toolkit, React Redux, CSS.
+
+Backend: Java 25, Spring Boot 4, Spring Data JPA, Spring Security, Bean Validation.
+
+Database & migrations: MySQL and Flyway.
+
+Authentication: Customer registration and login, bearer-token sessions, role-based access for customers, employees, and administrators, with optional Google OAuth 2.0.
+
+Product catalog: Categories, product details, pagination, stock information, and product image galleries.
+
+Shopping & orders: Cart management, delivery-address management, customer order history, and order-status updates for authorized staff.
+
+Media: Cloudinary integration for product images.
+
+Testing: Backend tests configured with H2 in-memory database.
